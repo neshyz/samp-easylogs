@@ -30,7 +30,8 @@ static enum E_LOGGER_DATA {
     E_LOGGER_NAME[MAX_LOGGER_NAME_LENGTH char],
     File:E_LOGGER_FILE,
     bool:E_LOGGER_VALID,
-    bool:E_LOGGER_PROPERFILE
+    bool:E_LOGGER_PROPERFILE,
+    LogLevel:E_LOGGER_LEVEL
 }
 
 static s_LoggerData[Logger:MAX_LOGGERS][E_LOGGER_DATA];
@@ -40,17 +41,12 @@ static s_Buffer[2048];
 
 
 
-
-static LogLevel:s_LogLevel = LOG_WARN;
-
-
-
 forward LoggerField:logger_string(const name[], const value[]);
 forward LoggerField:logger_int(const name[], value);
 forward LoggerField:logger_float(const name[], Float:value);
-forward Logger:GetLogger(const handlerName[], bool:properFile = true);
+forward Logger:GetLogger(const handlerName[], bool:properFile = true, LogLevel:level = LOG_WARN);
 
-Logger:GetLogger(const handlerName[], bool:properFile = true)
+Logger:GetLogger(const handlerName[], bool:properFile = true, LogLevel:level = LOG_WARN)
 {
     new Logger:logger = INVALID_LOGGER_ID;
 
@@ -71,6 +67,7 @@ Logger:GetLogger(const handlerName[], bool:properFile = true)
     strpack(s_LoggerData[logger][E_LOGGER_NAME], handlerName);
     s_LoggerData[logger][E_LOGGER_VALID] = true;
     s_LoggerData[logger][E_LOGGER_PROPERFILE] = properFile;
+    s_LoggerData[logger][E_LOGGER_LEVEL] = level;
 
     new dateFormat[32];
     GetDateString(dateFormat);
@@ -94,7 +91,7 @@ Logger:GetLogger(const handlerName[], bool:properFile = true)
 
 sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 {
-    if(logger == INVALID_LOGGER_ID || level < s_LogLevel) {
+    if(logger == INVALID_LOGGER_ID || level < s_LoggerData[logger][E_LOGGER_LEVEL]) {
         return;
     }
 
@@ -114,7 +111,7 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
     );
 
     if(totalArgs == 3) {
-        format(s_Buffer, sizeof(s_Buffer), "\n");
+        strcat(s_Buffer, "\n");
         return;
     }
 
@@ -131,7 +128,7 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
         }
     }
 
-    format(s_Buffer, sizeof(s_Buffer), "\n");
+    strcat(s_Buffer, "\n");
 
     if(s_LoggerData[logger][E_LOGGER_PROPERFILE]) {
         fwrite(s_LoggerData[logger][E_LOGGER_FILE], s_Buffer);
@@ -211,12 +208,12 @@ static GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
 
 
 
-stock SetLogLevel(LogLevel:level)
+stock SetLoggerLevel(LogLevel:level)
 {
-    s_LogLevel = level;
+    s_LoggerData[logger][E_LOGGER_LEVEL] = level;
 }
 
-stock LogLevel:GetLogLevel()
+stock LogLevel:GetLoggerLevel(Logger:logger)
 {
-    return s_LogLevel;
+    return s_LoggerData[logger][E_LOGGER_LEVEL];
 }
