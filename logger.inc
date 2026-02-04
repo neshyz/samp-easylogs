@@ -75,6 +75,13 @@ forward SetLoggerFileAppend(Logger:logger, bool:fileAppend);
 forward GetLoggerFileAppend(Logger:logger);
 
 
+
+// retorna true si el logger esta inicializado, false si el logger es invalido y no existe
+forward bool:IsValidLogger(Logger:logger);
+
+
+
+
 // logger_* retorna una cadena de etiqueta LoggerField con formato "field = valor"
 forward LoggerField:logger_string(const name[], const value[]);
 forward LoggerField:logger_int(const name[], value);
@@ -384,4 +391,10 @@ stock LogLevel:GetLogLevelId(const logLevelName[])
     }
 
     return LOG_NO;
+}
+
+
+stock bool:IsValidLogger(Logger:logger)
+{
+    return s_LoggerData[logger][E_LOGGER_VALID];
 }
