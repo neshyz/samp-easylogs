@@ -55,6 +55,12 @@ forward SetAllLoggerLevel(LogLevel:level);
 // ejecutar opcionalmente en OnGameModeExit
 forward CloseLoggers();
 
+// obtener el nombre de un logger
+forward GetLoggerName(Logger:logger, output[], const size = sizeof(output));
+
+// obtener el maximo de loggers en tiempo de ejecucion
+forward GetMaxLoggers();
+
 
 // logger_* retorna una cadena de etiqueta LoggerField con formato "field = valor"
 forward LoggerField:logger_string(const name[], const value[]);
@@ -65,7 +71,8 @@ forward LoggerField:logger_float(const name[], Float:value);
 forward Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppend = true, LogLevel:level = LOG_WARN);
 
 
-
+// sendlog es la funcion utilizada para enviar logs a un handler, con un nivel, mensaje y fields
+forward sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...);
 
 
 
@@ -104,12 +111,7 @@ Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppen
     s_LoggerData[logger][E_LOGGER_APPEND_FILE] = fileAppend;
 
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
-        new file_name[64];
-        format(file_name, sizeof(file_name),
-            "logs/log_%s.log", handlerName
-        );
-
-        s_LoggerData[logger][E_LOGGER_FILE] = fopen(file_name);
+        OpenLoggerFile(logger);
     }
 
 
@@ -118,6 +120,25 @@ Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppen
 }
 
 
+static OpenLoggerFile(Logger:logger)
+{
+    new handlerName[MAX_LOGGER_NAME_LENGTH];
+    GetLoggerName(logger, handlerName);
+
+
+    new file_name[64];
+    format(file_name, sizeof(file_name),
+        "logs/log_%s.log", handlerName
+    );
+
+    s_LoggerData[logger][E_LOGGER_FILE] = fopen(file_name);
+}
+
+static CloseLoggerFile(Logger:logger)
+{
+    fclose(s_LoggerData[logger][E_LOGGER_FILE]);
+    s_LoggerData[logger][E_LOGGER_FILE] = File:-1;
+}
 
 
 
@@ -257,6 +278,39 @@ stock LogLevel:GetLoggerLevel(Logger:logger)
 
 
 
+stock SetLoggerConsoleAppend(Logger:logger, bool:consoleAppend)
+{
+    s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE] = consoleAppend;
+}
+
+
+stock GetLoggerConsoleAppend(Logger:logger)
+{
+    return s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE];
+}
+
+
+
+stock SetLoggerFileAppend(Logger:logger, bool:fileAppend)
+{
+    s_LoggerData[logger][E_LOGGER_APPEND_FILE] = fileAppend;
+
+    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
+        OpenLoggerFile(logger);
+    }
+    else {
+        CloseLoggerFile(logger);
+    }
+
+}
+
+
+stock GetLoggerFileAppend(Logger:logger)
+{
+    return s_LoggerData[logger][E_LOGGER_APPEND_FILE];
+}
+
+
 
 stock SetAllLoggerLevel(LogLevel:level)
 {
@@ -275,7 +329,7 @@ stock CloseLoggers()
     for(new Logger:logger; logger < Logger:MAX_LOGGERS; logger++) {
         if(s_LoggerData[logger][E_LOGGER_VALID]) {
             if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
-                fclose(s_LoggerData[logger][E_LOGGER_FILE]);
+                CloseLoggerFile(logger);
             }
 
             s_LoggerData[logger][E_LOGGER_VALID] = false;
@@ -284,4 +338,16 @@ stock CloseLoggers()
     }
 
     printf("logger:  se cerraron %d loggers.", count);
+}
+
+
+stock GetLoggerName(Logger:logger, output[], const size = sizeof(output))
+{
+    strunpack(output, s_LoggerData[logger][E_LOGGER_NAME], size);
+}
+
+
+stock GetMaxLoggers()
+{
+    return MAX_LOGGERS;
 }
