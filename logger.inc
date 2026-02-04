@@ -208,7 +208,7 @@ static GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
 
 
 
-stock SetLoggerLevel(LogLevel:level)
+stock SetLoggerLevel(Logger:logger, LogLevel:level)
 {
     s_LoggerData[logger][E_LOGGER_LEVEL] = level;
 }
