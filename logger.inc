@@ -62,13 +62,32 @@ forward GetLoggerName(Logger:logger, output[], const size = sizeof(output));
 forward GetMaxLoggers();
 
 
+
+// obtener un LogLevel ID a partir de su nombre, ejemplo: `warning` retornara LogLevel:LOG_WARN (4)
+forward LogLevel:GetLogLevelId(const logLevelName[]);
+
+
+// configuracion de logger en tiempo de ejecucion
+forward SetLoggerConsoleAppend(Logger:logger, bool:consoleAppend);
+forward GetLoggerConsoleAppend(Logger:logger);
+
+forward SetLoggerFileAppend(Logger:logger, bool:fileAppend);
+forward GetLoggerFileAppend(Logger:logger);
+
+
 // logger_* retorna una cadena de etiqueta LoggerField con formato "field = valor"
 forward LoggerField:logger_string(const name[], const value[]);
 forward LoggerField:logger_int(const name[], value);
 forward LoggerField:logger_float(const name[], Float:value);
 
+
+
 // GetLogger permite generar un nuevo logger con configuración independiente
 forward Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppend = true, LogLevel:level = LOG_WARN);
+
+
+
+
 
 
 // sendlog es la funcion utilizada para enviar logs a un handler, con un nivel, mensaje y fields
@@ -350,4 +369,19 @@ stock GetLoggerName(Logger:logger, output[], const size = sizeof(output))
 stock GetMaxLoggers()
 {
     return MAX_LOGGERS;
+}
+
+
+stock LogLevel:GetLogLevelId(const logLevelName[])
+{
+    new tempName[16];
+    for(new LogLevel:level; level < LogLevel; level++) {
+        GetLogLevelName(level, tempName);
+
+        if(strcmp(logLevelName, tempName, false) == 0) {
+            return level;
+        }
+    }
+
+    return LOG_NO;
 }
