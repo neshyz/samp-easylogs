@@ -30,7 +30,8 @@ static enum E_LOGGER_DATA {
     E_LOGGER_NAME[MAX_LOGGER_NAME_LENGTH char],
     File:E_LOGGER_FILE,
     bool:E_LOGGER_VALID,
-    bool:E_LOGGER_PROPERFILE,
+    bool:E_LOGGER_APPEND_FILE,
+    bool:E_LOGGER_APPEND_CONSOLE,
     LogLevel:E_LOGGER_LEVEL
 }
 
@@ -40,13 +41,39 @@ static s_LoggerData[Logger:MAX_LOGGERS][E_LOGGER_DATA];
 static s_Buffer[2048];
 
 
+// cambiar el LogLevel de un logger
+forward SetLoggerLevel(Logger:logger, LogLevel:level);
 
+// obtener el LogLevel de un logger
+forward LogLevel:GetLoggerLevel(Logger:logger);
+
+// cambiar el LogLevel de todos los loggers a la vez
+forward SetAllLoggerLevel(LogLevel:level);
+
+// ejecutar opcionalmente en OnGameModeExit
+forward CloseLoggers();
+
+
+// logger_* retorna una cadena de etiqueta LoggerField con formato "field = valor"
 forward LoggerField:logger_string(const name[], const value[]);
 forward LoggerField:logger_int(const name[], value);
 forward LoggerField:logger_float(const name[], Float:value);
-forward Logger:GetLogger(const handlerName[], bool:properFile = true, LogLevel:level = LOG_WARN);
 
-Logger:GetLogger(const handlerName[], bool:properFile = true, LogLevel:level = LOG_WARN)
+// GetLogger permite generar un nuevo logger con configuración independiente
+forward Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppend = true, LogLevel:level = LOG_WARN);
+
+
+
+
+
+
+
+
+
+
+
+
+Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppend = true, LogLevel:level = LOG_WARN)
 {
     new Logger:logger = INVALID_LOGGER_ID;
 
@@ -66,18 +93,23 @@ Logger:GetLogger(const handlerName[], bool:properFile = true, LogLevel:level = L
 
     strpack(s_LoggerData[logger][E_LOGGER_NAME], handlerName);
     s_LoggerData[logger][E_LOGGER_VALID] = true;
-    s_LoggerData[logger][E_LOGGER_PROPERFILE] = properFile;
+    s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE] = consoleAppend;
     s_LoggerData[logger][E_LOGGER_LEVEL] = level;
 
-    new dateFormat[32];
-    GetDateString(dateFormat);
+    
 
 
-    new file_name[64];
-    format(file_name, sizeof(file_name),
-        "logs/log_%s_%s.log", handlerName, dateFormat
-    );
-    s_LoggerData[logger][E_LOGGER_FILE] = fopen(file_name);
+    s_LoggerData[logger][E_LOGGER_APPEND_FILE] = fileAppend;
+
+    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
+        new file_name[64];
+        format(file_name, sizeof(file_name),
+            "logs/log_%s.log", handlerName
+        );
+
+        s_LoggerData[logger][E_LOGGER_FILE] = fopen(file_name);
+    }
+
 
 
     return logger;
@@ -110,30 +142,28 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
         "[%s]  %s (%s):\t%s", dateFormat, logLevelName,  loggerName, _:logger_string("message", message)   
     );
 
-    if(totalArgs == 3) {
-        strcat(s_Buffer, "\n");
-        return;
-    }
+    if(totalArgs > 3) {
+        for(new arg = 3; arg < totalArgs; ++arg) {
+            new field[MAX_LOGGER_FIELD_LENGTH];
 
-    for(new arg = 3; arg < totalArgs; ++arg) {
-        new field[MAX_LOGGER_FIELD_LENGTH];
-
-        for(new ch; ch < MAX_LOGGER_FIELD_LENGTH; ch++) {
-            field[ch] = getarg(arg, ch);
-            if(field[ch] == EOS) {
-                strcat(s_Buffer, " ");
-                strcat(s_Buffer, field);
-                break;
+            for(new ch; ch < MAX_LOGGER_FIELD_LENGTH; ch++) {
+                field[ch] = getarg(arg, ch);
+                if(field[ch] == EOS) {
+                    strcat(s_Buffer, ", ");
+                    strcat(s_Buffer, field);
+                    break;
+                }
             }
         }
     }
 
     strcat(s_Buffer, "\n");
 
-    if(s_LoggerData[logger][E_LOGGER_PROPERFILE]) {
+    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
         fwrite(s_LoggerData[logger][E_LOGGER_FILE], s_Buffer);
     }
-    else {
+    
+    if(s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE]) {
         print(s_Buffer);
     }
 }
@@ -176,7 +206,7 @@ static GetDateString(output[], const size = sizeof(output))
     getdate(year, month, day);
 
     format(output, size,
-        "%02d_%02d_%02d_%02d;%02d;%02d", day, month, year, hour, minute, second
+        "%02d/%02d/%02d-%02d:%02d:%02d", day, month, year, hour, minute, second
     );
 }
 
@@ -195,7 +225,7 @@ static GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
             format(output, size, "info");
         }
         case LOG_WARN: {
-            format(output, size, "warn");
+            format(output, size, "warning");
         }
         case LOG_ERROR: {
             format(output, size, "error");
@@ -208,12 +238,48 @@ static GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
 
 
 
+
+
+
 stock SetLoggerLevel(Logger:logger, LogLevel:level)
 {
     s_LoggerData[logger][E_LOGGER_LEVEL] = level;
 }
 
+
+
 stock LogLevel:GetLoggerLevel(Logger:logger)
 {
     return s_LoggerData[logger][E_LOGGER_LEVEL];
+}
+
+
+
+
+stock SetAllLoggerLevel(LogLevel:level)
+{
+    for(new Logger:logger; logger < Logger:MAX_LOGGERS; logger++) {
+        if(s_LoggerData[logger][E_LOGGER_VALID]) {
+            s_LoggerData[logger][E_LOGGER_LEVEL] = level;
+        }
+    }
+}
+
+
+
+stock CloseLoggers() 
+{
+    new count;
+    for(new Logger:logger; logger < Logger:MAX_LOGGERS; logger++) {
+        if(s_LoggerData[logger][E_LOGGER_VALID]) {
+            if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
+                fclose(s_LoggerData[logger][E_LOGGER_FILE]);
+            }
+
+            s_LoggerData[logger][E_LOGGER_VALID] = false;
+            count++;
+        }
+    }
+
+    printf("logger:  se cerraron %d loggers.", count);
 }
