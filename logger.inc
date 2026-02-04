@@ -12,7 +12,7 @@
 #endif
 
 #if !defined MAX_LOGGER_FIELD_LENGTH
-    #define MAX_LOGGER_FIELD_LENGTH (64)
+    #define MAX_LOGGER_FIELD_LENGTH (128)
 #endif
 
 enum LogLevel {
