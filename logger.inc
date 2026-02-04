@@ -16,12 +16,14 @@
 #endif
 
 enum LogLevel {
+    LOG_ALL,
     LOG_TRACE,
     LOG_DEBUG,
     LOG_INFO,
     LOG_WARN,
     LOG_ERROR,
-    LOG_FATAL
+    LOG_FATAL,
+    LOG_OFF
 }
 
 
