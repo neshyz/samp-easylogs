@@ -390,7 +390,7 @@ stock LogLevel:GetLogLevelId(const logLevelName[])
         }
     }
 
-    return LOG_NO;
+    return LOG_OFF;
 }
 
 
