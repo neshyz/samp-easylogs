@@ -50,7 +50,7 @@ public OnPlayerConnect(playerid)
 Pero el log no se mostrará, porque definimos nuestro logger con un nivel de ERROR. Para esto, la librería permite cambiar el LogLevel de un logger handler en tiempo de ejecución:
 
 ```pawn
-SetLoggerLogLevel(g_PlayerLogger, LOG_TRACE); // log all
+SetLoggerLogLevel(g_PlayerLogger, LOG_ALL);
 ```
 
 
@@ -60,7 +60,7 @@ Puedes configurar la lib antes de incluirla:
 
 ```pawn
 #define MAX_LOGGER (10) // default: 100
-#define MAX_LOGGER_FIELD_LENGTH (32) // default: 64
+#define MAX_LOGGER_FIELD_LENGTH (256) // default: 128
 #include <logger>
 ```
 
