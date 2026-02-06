@@ -158,6 +158,7 @@ static OpenLoggerFile(Logger:logger)
     );
 
     s_LoggerData[logger][E_LOGGER_FILE] = fopen(file_name);
+    fseek(s_LoggerData[logger][E_LOGGER_FILE],  .whence = seek_end);
 }
 
 static CloseLoggerFile(Logger:logger)
