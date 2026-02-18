@@ -15,6 +15,19 @@
     #define MAX_LOGGER_FIELD_LENGTH (128)
 #endif
 
+
+#if defined LOGGER_USE_CALLBACKS
+
+    #if !defined LOGGER_USE_INIT_CALLBACKS
+        #define LOGGER_USE_INIT_CALLBACKS (true)
+    #endif
+
+    #if !defined LOGGER_USE_LOG_CALLBACKS
+        #define LOGGER_USE_LOG_CALLBACKS (false)
+    #endif
+#endif
+
+
 enum LogLevel {
     LOG_ALL,
     LOG_TRACE,
@@ -141,6 +154,11 @@ Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppen
     }
 
 
+    #if defined LOGGER_USE_CALLBACKS
+        #if LOGGER_USE_INIT_CALLBACKS == true
+            CallLocalFunction("OnLoggerInit", "i", _:logger);
+        #endif
+    #endif
 
     return logger;
 }
@@ -209,6 +227,13 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
     strcat(s_Buffer, "\n");
 
+    #if defined LOGGER_USE_CALLBACKS
+        #if LOGGER_USE_LOG_CALLBACKS == true
+            if(!CallLocalFunction("OnLoggerLog", "iis", _:logger, _:level, s_Buffer)) {
+                return;
+            }
+        #endif
+    #endif
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
         fwrite(s_LoggerData[logger][E_LOGGER_FILE], s_Buffer);
     }
@@ -216,6 +241,7 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
     if(s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE]) {
         print(s_Buffer);
     }
+
 }
 
 
