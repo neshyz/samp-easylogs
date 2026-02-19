@@ -1,3 +1,13 @@
+#if defined _logger_module_mysql
+    #endinput
+#endif
+
+#if !defined _logger_included
+    #error "logger_mysql.inc es un modulo y debe ser incluido despues de logger.inc"
+#endif
+
+#define _logger_module_mysql
+
 
 #define MAX_LOGGER_DB_TABLE_LEN (32)
 

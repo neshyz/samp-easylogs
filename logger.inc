@@ -1,3 +1,9 @@
+#if defined _logger_included
+    #endinput
+#endif
+
+#define _logger_included
+
 
 #define INVALID_LOGGER_ID  (Logger:-1)
 
@@ -119,12 +125,6 @@ forward sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
     forward OnLoggerInit(Logger:logger);
     #if LOGGER_USE_LOG_CALLBACKS == true
         forward OnLoggerLog(Logger:logger, LogLevel:level, const msg[]);
-        public OnLoggerLog(Logger:logger, LogLevel:level, const msg[])
-        {
-            #if defined mysql_included
-                _OnLoggerLog_Mysql(logger, level, msg);
-            #endif
-        }
     #endif
 #endif
 
@@ -169,7 +169,7 @@ Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppen
     #if defined LOGGER_USE_CALLBACKS
         CallLocalFunction("OnLoggerInit", "i", _:logger);
 
-        #if defined mysql_included
+        #if defined LOGGER_USE_MYSQL
             _OnLoggerInit_Mysql(logger);
         #endif
     #endif
@@ -245,6 +245,10 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
         if(!CallLocalFunction("OnLoggerLog", "iis", _:logger, _:level, s_Buffer)) {
             return;
         }
+
+        #if defined LOGGER_USE_MYSQL
+            _OnLoggerLog_Mysql(logger, level, s_Buffer);
+        #endif
     #endif
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
         fwrite(s_LoggerData[logger][E_LOGGER_FILE], s_Buffer);
