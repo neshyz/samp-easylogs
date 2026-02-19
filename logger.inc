@@ -56,6 +56,9 @@ static s_LoggerData[Logger:MAX_LOGGERS][E_LOGGER_DATA];
 static s_Buffer[2048];
 
 
+static Logger:s_ActiveLogger = INVALID_LOGGER_ID;
+
+
 // cambiar el LogLevel de un logger
 forward SetLoggerLevel(Logger:logger, LogLevel:level);
 
@@ -87,8 +90,6 @@ forward GetLoggerConsoleAppend(Logger:logger);
 forward SetLoggerFileAppend(Logger:logger, bool:fileAppend);
 forward GetLoggerFileAppend(Logger:logger);
 
-
-
 // retorna true si el logger esta inicializado, false si el logger es invalido y no existe
 forward bool:IsValidLogger(Logger:logger);
 
@@ -114,7 +115,18 @@ forward Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:cons
 forward sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...);
 
 
-
+#if defined LOGGER_USE_CALLBACKS
+    forward OnLoggerInit(Logger:logger);
+    #if LOGGER_USE_LOG_CALLBACKS == true
+        forward OnLoggerLog(Logger:logger, LogLevel:level, const msg[]);
+        public OnLoggerLog(Logger:logger, LogLevel:level, const msg[])
+        {
+            #if defined mysql_included
+                _OnLoggerLog_Mysql(logger, level, msg);
+            #endif
+        }
+    #endif
+#endif
 
 
 
@@ -155,8 +167,10 @@ Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppen
 
 
     #if defined LOGGER_USE_CALLBACKS
-        #if LOGGER_USE_INIT_CALLBACKS == true
-            CallLocalFunction("OnLoggerInit", "i", _:logger);
+        CallLocalFunction("OnLoggerInit", "i", _:logger);
+
+        #if defined mysql_included
+            _OnLoggerInit_Mysql(logger);
         #endif
     #endif
 
@@ -227,12 +241,10 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
     strcat(s_Buffer, "\n");
 
-    #if defined LOGGER_USE_CALLBACKS
-        #if LOGGER_USE_LOG_CALLBACKS == true
-            if(!CallLocalFunction("OnLoggerLog", "iis", _:logger, _:level, s_Buffer)) {
-                return;
-            }
-        #endif
+    #if defined LOGGER_USE_CALLBACKS && LOGGER_USE_LOG_CALLBACKS == true
+        if(!CallLocalFunction("OnLoggerLog", "iis", _:logger, _:level, s_Buffer)) {
+            return;
+        }
     #endif
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
         fwrite(s_LoggerData[logger][E_LOGGER_FILE], s_Buffer);
@@ -288,7 +300,7 @@ static GetDateString(output[], const size = sizeof(output))
 
 
 
-static GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
+stock GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
 {
     switch(level) {
         case LOG_TRACE: {
@@ -424,4 +436,9 @@ stock LogLevel:GetLogLevelId(const logLevelName[])
 stock bool:IsValidLogger(Logger:logger)
 {
     return s_LoggerData[logger][E_LOGGER_VALID];
+}
+
+stock Logger:GetActiveLogger()
+{
+    return s_ActiveLogger;
 }
