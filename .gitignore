@@ -3,3 +3,5 @@ gamemodes
 samp-server.exe
 server.cfg
 *.log
+plugins
+*.dll
