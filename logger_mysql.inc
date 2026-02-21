@@ -85,7 +85,7 @@ stock GetLoggerDatabaseTable(Logger:logger, output[], const size = sizeof(output
 stock SetLoggerDatabaseTable(Logger:logger, const table[])
 {
     strpack(s_LoggerMysql[logger][E_LOGGER_DB_TABLE], table);
-	MYSQL_CreateTable(GetLoggerDatabase(logger), table);
+	mysql_CreateTable(GetLoggerDatabase(logger), table);
 }
 
 stock CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[])
@@ -93,11 +93,11 @@ stock CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[]
 	new tableName[32];
 	GetLoggerDatabaseTable(logger, tableName);
 
-	MYSQL_CreateColumn(GetLoggerDatabase(logger), tableName, column, typeData);
+	mysql_CreateColumn(GetLoggerDatabase(logger), tableName, column, typeData);
 }
 
 
-stock LoggerField:loggerdb_float(Float:value)
+stock LoggerField:loggerdb_float(const name[], Float:value)
 {
     new Logger:logger = GetActiveLogger();
 
@@ -109,9 +109,13 @@ stock LoggerField:loggerdb_float(Float:value)
 
         s_InsertedRows++;
     }
+
+    new field[MAX_LOGGER_FIELD_LENGTH];
+    format(field, sizeof(field), "%s", _:logger_float(name, value));
+    return LoggerField:field;
 }
 
-stock LoggerField:loggerdb_int(value)
+stock LoggerField:loggerdb_int(const name[], value)
 {
     new Logger:logger = GetActiveLogger();
 
@@ -123,9 +127,14 @@ stock LoggerField:loggerdb_int(value)
 
         s_InsertedRows++;
     }
+
+
+    new field[MAX_LOGGER_FIELD_LENGTH];
+    format(field, sizeof(field), "%s", _:logger_int(name, value));
+    return LoggerField:field;
 }
 
-stock LoggerField:loggerdb_string(const value[])
+stock LoggerField:loggerdb_string(const name[], const value[])
 {
     new Logger:logger = GetActiveLogger();
 
@@ -137,6 +146,11 @@ stock LoggerField:loggerdb_string(const value[])
 
         s_InsertedRows++;
     }
+
+
+    new field[MAX_LOGGER_FIELD_LENGTH];
+    format(field, sizeof(field), "%s", _:logger_string(name, value));
+    return LoggerField:field;
 }
 
 
@@ -170,97 +184,6 @@ static stock bool:isempty(const string[]) {
 		return string[0] == '\0';
 }
 
-static stock strexplode(output[][], const input[], const delimiter[] = !",", limit = cellmax, bool:trim = true, bool:ignorecase = false, size1 = sizeof(output), size2 = sizeof(output[])) {
-	if (!size1 || !size2) {
-		printf("(strexplode) ERROR: size1 = %d, size2 = %d. Can't be 0.", size1, size2);
-		
-		return 0;
-	}
-	
-	if (isempty(delimiter)) {
-		print(!"(strexplode) ERROR: delimiter is empty.");
-		
-		return 0;
-	}
-	
-	if (trim) {
-		new i = -1;
-		
-		if (ispacked(input)) {
-			while (input{++i}) {
-				if (input{i} > ' ') {
-					i = -1;
-					
-					break;
-				}
-			}
-		} else {
-			while (input[++i]) {
-				if (input[i] > ' ') {
-					i = -1;
-					
-					break;
-				}
-			}
-		}
-		
-		if (i != -1)
-			return 0;
-	} else if (isempty(input)) {
-		return 0;
-	}
-	
-	if (limit == 0) {
-		return 0;
-	} else if (limit == cellmax) {
-		limit = 0;
-	}
-	
-	new
-		     pos = 0,
-		     next,
-		bool:packed = ispacked(input),
-		     dlen = strlen(delimiter),
-		     count = 0,
-		     end
-	;
-	
-	while (pos != -1) {
-		++count;
-		
-		if (limit > 0 && count >= limit) {
-			next = -1;
-		} else {
-			next = strfind(input, delimiter, ignorecase, pos);
-		}
-		
-		end = (next == -1) ? cellmax : next;
-		
-		if (trim) {
-			if (end == cellmax)
-				end = strlen(input);
-			
-			if (packed) {
-				while (0 < input{pos} <= ' ') pos++;
-				while (end > 0 && input{end - 1} <= ' ') end--;
-			} else {
-				while (0 < input[pos] <= ' ') pos++;
-				while (end > 0 && input[end - 1] <= ' ') end--;
-			}
-		}
-		
-		strmid(output[count - 1], input, pos, end, size2);
-		
-		if (count >= size1 || next == -1 || (limit < 0 && count >= -limit))
-			break;
-		
-		pos = next + dlen;
-	}
-	
-	return count;
-}
-
-
 
 
 
@@ -270,7 +193,7 @@ static stock strexplode(output[][], const input[], const delimiter[] = !",", lim
 
 // utils
 
-static stock MYSQL_CreateTable(MySQL:handle, const table_name[], const info[] = "ID INTEGER AUTO_INCREMENT, PRIMARY KEY(ID)")
+static stock mysql_CreateTable(MySQL:handle, const table_name[], const info[] = "ID INTEGER AUTO_INCREMENT, PRIMARY KEY(ID)")
 {
     new query[300];
 
@@ -294,7 +217,7 @@ static stock MYSQL_CreateTable(MySQL:handle, const table_name[], const info[] = 
 
 
 
-static stock MYSQL_CheckColumnExists(MySQL:handle, const table[], const column_name[])
+static stock mysql_CheckColumnExists(MySQL:handle, const table[], const column_name[])
 {
     new query[300];
 
@@ -305,7 +228,7 @@ static stock MYSQL_CheckColumnExists(MySQL:handle, const table[], const column_n
         AND TABLE_SCHEMA = '%e' \
         AND COLUMN_NAME = '%e';",
         table,
-        handle == handle_db ? SELE_DB : SELE_DB"_logs",
+        LOGGER_SELE_DB,
         column_name
     );
 
@@ -317,9 +240,9 @@ static stock MYSQL_CheckColumnExists(MySQL:handle, const table[], const column_n
     return int;
 }
 
-static stock MYSQL_CreateColumn(MySQL:handle, const table[], const column_name[], const data[])
+static stock mysql_CreateColumn(MySQL:handle, const table[], const column_name[], const data[])
 {
-    if(MYSQL_CheckColumnExists(handle, table, column_name)) {
+    if(mysql_CheckColumnExists(handle, table, column_name)) {
 
         return;
         
@@ -340,7 +263,7 @@ static stock MYSQL_CreateColumn(MySQL:handle, const table[], const column_name[]
         new errorBuffer[1024];
         mysql_error(errorBuffer);
 
-		printf("MYSQL_CreateColumn:  error  %s", errorBuffer);
+		printf("mysql_CreateColumn:  error  %s", errorBuffer);
 
     }
     cache_delete(cache_save());
