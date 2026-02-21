@@ -21,16 +21,12 @@
     #define MAX_LOGGER_FIELD_LENGTH (128)
 #endif
 
+#if !defined LOGGER_USE_INIT_CALLBACKS
+    #define LOGGER_USE_INIT_CALLBACKS (true)
+#endif
 
-#if defined LOGGER_USE_CALLBACKS
-
-    #if !defined LOGGER_USE_INIT_CALLBACKS
-        #define LOGGER_USE_INIT_CALLBACKS (true)
-    #endif
-
-    #if !defined LOGGER_USE_LOG_CALLBACKS
-        #define LOGGER_USE_LOG_CALLBACKS (false)
-    #endif
+#if !defined LOGGER_USE_LOG_CALLBACKS
+    #define LOGGER_USE_LOG_CALLBACKS (false)
 #endif
 
 
@@ -209,6 +205,8 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
         return;
     }
 
+    s_ActiveLogger = logger;
+
     new totalArgs = numargs();
     
     new loggerName[MAX_LOGGER_NAME_LENGTH];
@@ -243,6 +241,7 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
     #if defined LOGGER_USE_CALLBACKS && LOGGER_USE_LOG_CALLBACKS == true
         if(!CallLocalFunction("OnLoggerLog", "iis", _:logger, _:level, s_Buffer)) {
+            s_ActiveLogger = INVALID_LOGGER_ID;
             return;
         }
 
@@ -258,6 +257,7 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
         print(s_Buffer);
     }
 
+    s_ActiveLogger = INVALID_LOGGER_ID;
 }
 
 
