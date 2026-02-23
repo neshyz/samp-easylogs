@@ -174,7 +174,7 @@ Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppen
 }
 
 
-static OpenLoggerFile(Logger:logger)
+static stock OpenLoggerFile(Logger:logger)
 {
     new handlerName[MAX_LOGGER_NAME_LENGTH];
     GetLoggerName(logger, handlerName);
@@ -189,7 +189,7 @@ static OpenLoggerFile(Logger:logger)
     fseek(s_LoggerData[logger][E_LOGGER_FILE],  .whence = seek_end);
 }
 
-static CloseLoggerFile(Logger:logger)
+static stock CloseLoggerFile(Logger:logger)
 {
     fclose(s_LoggerData[logger][E_LOGGER_FILE]);
     s_LoggerData[logger][E_LOGGER_FILE] = File:-1;
@@ -291,7 +291,7 @@ stock LoggerField:logger_string(const name[], const value[])
 }
 
 
-static GetDateString(output[], const size = sizeof(output))
+static stock GetDateString(output[], const size = sizeof(output))
 {
     new day, month, year, hour, minute, second;
     gettime(hour, minute, second);
