@@ -4,7 +4,6 @@
 
 #define _logger_included
 
-
 #define INVALID_LOGGER_ID  (Logger:-1)
 
 
@@ -229,6 +228,10 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
             for(new ch; ch < MAX_LOGGER_FIELD_LENGTH; ch++) {
                 field[ch] = getarg(arg, ch);
                 if(field[ch] == EOS) {
+                    #if defined LOGGER_USE_MYSQL
+                    _OnLoggerAppendField_Mysql(logger, field);
+                    #endif
+                    
                     strcat(s_Buffer, ", ");
                     strcat(s_Buffer, field);
                     break;
