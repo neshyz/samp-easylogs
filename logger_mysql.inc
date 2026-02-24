@@ -47,6 +47,14 @@
     #define MAX_LOGGER_DB_COLUMNS (16)
 #endif
 
+#if !defined MAX_LOGGER_DB_QUERY_LEN
+    #define MAX_LOGGER_DB_QUERY_LEN (4096)
+#endif
+
+#if !defined MAX_LOGGER_DB_BUFFER_LEN
+    #define MAX_LOGGER_DB_BUFFER_LEN (1024)
+#endif
+
 
 forward MySQL:GetLoggerDatabase(Logger:logger);
 
@@ -65,8 +73,9 @@ static enum E_LOGGER_MYSQL_DATA {
 static s_LoggerMysql[Logger:MAX_LOGGERS][E_LOGGER_MYSQL_DATA];
 static s_LoggerColumns[Logger:MAX_LOGGERS][MAX_LOGGER_DB_COLUMNS][MAX_LOGGER_DB_COLUMN_LEN char];
 
-static s_QueryBuffer[4098],
-        s_QueryBuffer_Columns[512],
+static s_QueryBuffer[MAX_LOGGER_DB_QUERY_LEN],
+        s_QueryBuffer_Columns[MAX_LOGGER_DB_BUFFER_LEN],
+        s_QueryBuffer_Values[MAX_LOGGER_DB_BUFFER_LEN],
         s_InsertedRows = 0;
 
 
@@ -80,43 +89,61 @@ _OnLoggerLog_Mysql(Logger:logger, LogLevel:level, const msg[])
         new levelName[32];
         GetLogLevelName(level, levelName);
 
+
+
+
+        __strreplace("\"", "'", s_QueryBuffer_Values);
+        __strreplace("\"", "`", s_QueryBuffer_Columns);
+
         mysql_format(GetLoggerDatabase(logger),
             s_QueryBuffer, sizeof(s_QueryBuffer),
-            "INSERT INTO %s (%s) VALUES (%s);", tableName, s_QueryBuffer_Columns, s_QueryBuffer
+            "INSERT INTO %s (%s) VALUES (%s);", tableName, s_QueryBuffer_Columns, s_QueryBuffer_Values
         );
 
         mysql_tquery(GetLoggerDatabase(logger), s_QueryBuffer);
 
         printf("final query %s", s_QueryBuffer);
+        
+        format(s_QueryBuffer, sizeof(s_QueryBuffer), "");
+        format(s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns), "");
+        format(s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values), "");
 
         s_InsertedRows = 0;
     }
 }
 
+static enum e_FieldContent {
+    e_field_name[MAX_LOGGER_FIELD_LENGTH],
+    e_field_value[MAX_LOGGER_FIELD_LENGTH]
+}
+static s_ExtractedField[e_FieldContent];
+
 _OnLoggerAppendField_Mysql(Logger:logger, const field[])
 {
-    __strArrayToString(s_LoggerColumns[logger], s_QueryBuffer_Columns, .arr_size = s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT]);
+    __strreplace(" ", "", field, strlen(field) + 1);
+
+    if(GetLoggerDatabaseAppend(logger)) {
+        
+
+        new sscanfFormat[64];
+        format(sscanfFormat, sizeof(sscanfFormat), "p<=>e<s[%d]s[%d]>", MAX_LOGGER_FIELD_LENGTH, MAX_LOGGER_FIELD_LENGTH);
+        sscanf(field, sscanfFormat, s_ExtractedField);
 
 
-    static enum e_FieldContent {
-        e_field_name[MAX_LOGGER_FIELD_LENGTH],
-        e_field_value[MAX_LOGGER_FIELD_LENGTH]
+        if(s_InsertedRows > 0) {
+            strcat(s_QueryBuffer_Values, ", ");
+            strcat(s_QueryBuffer_Columns, ", ");
+        }
+
+        format(s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values),
+            "%s%s", s_QueryBuffer_Values, s_ExtractedField[e_field_value]
+        );
+        format(s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns),
+            "%s%s", s_QueryBuffer_Columns, s_ExtractedField[e_field_name]
+        );
+
+        s_InsertedRows++;
     }
-    new extractedField[e_FieldContent];
-
-    new sscanfFormat[64];
-    format(sscanfFormat, sizeof(sscanfFormat), "p<=>e<s[%d]s[%d]>", MAX_LOGGER_FIELD_LENGTH, MAX_LOGGER_FIELD_LENGTH);
-    sscanf(field, sscanfFormat, extractedField);
-
-
-    if(s_InsertedRows > 0) {
-        strcat(s_QueryBuffer, ", ");
-    }
-    format(s_QueryBuffer, sizeof(s_QueryBuffer),
-        "%s%s", s_QueryBuffer, extractedField[e_field_value]
-    );
-
-    s_InsertedRows++;
 }
 
 
@@ -191,92 +218,43 @@ stock CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[]
 
 
 
-static enum strArrayType {
-    str_array_type_comma,
-    str_array_type_line_tab,
-    str_array_type_just_line
-}
-static stock __strArrayToString(const arr[][], output[], strArrayType:type = str_array_type_comma, const size = sizeof(output), const arr_size = sizeof(arr))
+static stock strclean(output[], const size = sizeof(output))
 {
-    switch(type) {
+    for(new idx; idx < size; idx++) {
+        output[idx] = 0;
+    }
+}
+static stock __strArrayToString(const arr[][], output[], const size = sizeof(output), const arr_size = sizeof(arr))
+{
+    for(new ind; ind < arr_size; ind++) {
 
-        case str_array_type_just_line: {
-
-            for(new ind; ind < arr_size; ind++) {
-
-                if(ind == arr_size - 1 && arr_size > 1) {
-                    
-                    strcat(output, " ", size);
-                    strcat(output, arr[ind], size);
-
-                }
-                else if(ind == arr_size - 2 || arr_size == 1) {
-
-                    strcat(output, " ", size);
-                    strcat(output, arr[ind], size);
-                    strcat(output, "\n", size);
-
-                }
-                else {
-
-                    strcat(output, " ", size);
-                    strcat(output, arr[ind], size);
-                    strcat(output, "\n", size);
-
-                }
-            }
+        if(ind == arr_size - 1 || arr_size == 1) {
+        
+            strcat(output, arr[ind], size);
 
         }
-        case str_array_type_comma: {
-
-            for(new ind; ind < arr_size; ind++) {
-
-                if(ind == arr_size - 1 && arr_size > 1) {
-
-                    strcat(output, " y ", size);
-                    strcat(output, arr[ind], size);
-
-                }
-                else if(ind == arr_size - 2 || arr_size == 1) {
-                
-                    strcat(output, arr[ind], size);
-
-                }
-                else {
-                    
-                    strcat(output, arr[ind], size);
-                    strcat(output, ", ", size);
-
-                }
-            }
-        }
-
-        case str_array_type_line_tab: {
-
-            for(new ind; ind < arr_size; ind++) {
-
-                if(ind == arr_size - 1 && arr_size > 1) {
-
-                    strcat(output, "\t- ", size);
-                    strcat(output, arr[ind], size);
-
-
-                }
-                else if(ind == arr_size - 2 || arr_size == 1) {
-
-                    strcat(output, "\t- ", size);
-                    strcat(output, arr[ind], size);
-                    strcat(output, "\n", size);
-                }
-                else {
-
-                    strcat(output, "\t- ", size);
-                    strcat(output, arr[ind], size);
-                    strcat(output, "\n", size);
-
-                }
-            }
+        else {
+            
+            strcat(output, arr[ind], size);
+            strcat(output, ", ", size);
 
         }
     }
+}
+
+
+static stock __strreplace(const str1[], const str2[], const output[], const size = sizeof(output))
+{
+    new bool:anyOcurrencesFound;
+    do {
+        new idx = strfind(output, str1);
+        if(idx == -1) {
+            anyOcurrencesFound = false;
+            break;
+        }
+
+        strdel(output, idx, idx + strlen(str1));
+        strins(output, str2, idx, size);
+        anyOcurrencesFound = true;
+    } while(anyOcurrencesFound);
 }
