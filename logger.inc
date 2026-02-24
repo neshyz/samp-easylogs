@@ -21,11 +21,11 @@
 #endif
 
 #if !defined LOGGER_USE_INIT_CALLBACKS
-    #define LOGGER_USE_INIT_CALLBACKS (true)
+    #define LOGGER_USE_INIT_CALLBACKS
 #endif
 
 #if !defined LOGGER_USE_LOG_CALLBACKS
-    #define LOGGER_USE_LOG_CALLBACKS (false)
+    #define LOGGER_USE_LOG_CALLBACKS
 #endif
 
 
@@ -118,7 +118,7 @@ forward sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
 #if defined LOGGER_USE_CALLBACKS
     forward OnLoggerInit(Logger:logger);
-    #if LOGGER_USE_LOG_CALLBACKS == true
+    #if defined LOGGER_USE_LOG_CALLBACKS
         forward OnLoggerLog(Logger:logger, LogLevel:level, const msg[]);
     #endif
 #endif
@@ -231,7 +231,7 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
                     #if defined LOGGER_USE_MYSQL
                     _OnLoggerAppendField_Mysql(logger, field);
                     #endif
-                    
+
                     strcat(s_Buffer, ", ");
                     strcat(s_Buffer, field);
                     break;
@@ -242,7 +242,7 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
     strcat(s_Buffer, "\n");
 
-    #if defined LOGGER_USE_CALLBACKS && LOGGER_USE_LOG_CALLBACKS == true
+    #if defined LOGGER_USE_CALLBACKS && defined LOGGER_USE_LOG_CALLBACKS
         if(!CallLocalFunction("OnLoggerLog", "iis", _:logger, _:level, s_Buffer)) {
             s_ActiveLogger = INVALID_LOGGER_ID;
             return;
