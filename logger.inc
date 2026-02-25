@@ -1,3 +1,8 @@
+#if defined _logger_included
+    #endinput
+#endif
+
+#define _logger_included
 
 #define INVALID_LOGGER_ID  (Logger:-1)
 
@@ -14,6 +19,15 @@
 #if !defined MAX_LOGGER_FIELD_LENGTH
     #define MAX_LOGGER_FIELD_LENGTH (128)
 #endif
+
+#if !defined LOGGER_USE_INIT_CALLBACKS
+    #define LOGGER_USE_INIT_CALLBACKS
+#endif
+
+#if !defined LOGGER_USE_LOG_CALLBACKS
+    #define LOGGER_USE_LOG_CALLBACKS
+#endif
+
 
 enum LogLevel {
     LOG_ALL,
@@ -41,6 +55,9 @@ static s_LoggerData[Logger:MAX_LOGGERS][E_LOGGER_DATA];
 
 
 static s_Buffer[2048];
+
+
+static Logger:s_ActiveLogger = INVALID_LOGGER_ID;
 
 
 // cambiar el LogLevel de un logger
@@ -74,8 +91,6 @@ forward GetLoggerConsoleAppend(Logger:logger);
 forward SetLoggerFileAppend(Logger:logger, bool:fileAppend);
 forward GetLoggerFileAppend(Logger:logger);
 
-
-
 // retorna true si el logger esta inicializado, false si el logger es invalido y no existe
 forward bool:IsValidLogger(Logger:logger);
 
@@ -101,7 +116,12 @@ forward Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:cons
 forward sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...);
 
 
-
+#if defined LOGGER_USE_CALLBACKS
+    forward OnLoggerInit(Logger:logger);
+    #if defined LOGGER_USE_LOG_CALLBACKS
+        forward OnLoggerLog(Logger:logger, LogLevel:level, const msg[]);
+    #endif
+#endif
 
 
 
@@ -141,12 +161,19 @@ Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppen
     }
 
 
+    #if defined LOGGER_USE_CALLBACKS
+        CallLocalFunction("OnLoggerInit", "i", _:logger);
+
+        #if defined LOGGER_USE_MYSQL
+            _OnLoggerInit_Mysql(logger);
+        #endif
+    #endif
 
     return logger;
 }
 
 
-static OpenLoggerFile(Logger:logger)
+static stock OpenLoggerFile(Logger:logger)
 {
     new handlerName[MAX_LOGGER_NAME_LENGTH];
     GetLoggerName(logger, handlerName);
@@ -161,7 +188,7 @@ static OpenLoggerFile(Logger:logger)
     fseek(s_LoggerData[logger][E_LOGGER_FILE],  .whence = seek_end);
 }
 
-static CloseLoggerFile(Logger:logger)
+static stock CloseLoggerFile(Logger:logger)
 {
     fclose(s_LoggerData[logger][E_LOGGER_FILE]);
     s_LoggerData[logger][E_LOGGER_FILE] = File:-1;
@@ -176,6 +203,8 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
     if(logger == INVALID_LOGGER_ID || level < s_LoggerData[logger][E_LOGGER_LEVEL]) {
         return;
     }
+
+    s_ActiveLogger = logger;
 
     new totalArgs = numargs();
     
@@ -199,6 +228,10 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
             for(new ch; ch < MAX_LOGGER_FIELD_LENGTH; ch++) {
                 field[ch] = getarg(arg, ch);
                 if(field[ch] == EOS) {
+                    #if defined LOGGER_USE_MYSQL
+                    _OnLoggerAppendField_Mysql(logger, level, message, field);
+                    #endif
+
                     strcat(s_Buffer, ", ");
                     strcat(s_Buffer, field);
                     break;
@@ -209,6 +242,16 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
     strcat(s_Buffer, "\n");
 
+    #if defined LOGGER_USE_CALLBACKS && defined LOGGER_USE_LOG_CALLBACKS
+        if(!CallLocalFunction("OnLoggerLog", "iis", _:logger, _:level, s_Buffer)) {
+            s_ActiveLogger = INVALID_LOGGER_ID;
+            return;
+        }
+
+        #if defined LOGGER_USE_MYSQL
+            _OnLoggerLog_Mysql(logger, level, s_Buffer);
+        #endif
+    #endif
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
         fwrite(s_LoggerData[logger][E_LOGGER_FILE], s_Buffer);
     }
@@ -216,6 +259,8 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
     if(s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE]) {
         print(s_Buffer);
     }
+
+    s_ActiveLogger = INVALID_LOGGER_ID;
 }
 
 
@@ -249,7 +294,7 @@ stock LoggerField:logger_string(const name[], const value[])
 }
 
 
-static GetDateString(output[], const size = sizeof(output))
+static stock GetDateString(output[], const size = sizeof(output))
 {
     new day, month, year, hour, minute, second;
     gettime(hour, minute, second);
@@ -262,7 +307,7 @@ static GetDateString(output[], const size = sizeof(output))
 
 
 
-static GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
+stock GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
 {
     switch(level) {
         case LOG_TRACE: {
@@ -398,4 +443,9 @@ stock LogLevel:GetLogLevelId(const logLevelName[])
 stock bool:IsValidLogger(Logger:logger)
 {
     return s_LoggerData[logger][E_LOGGER_VALID];
+}
+
+stock Logger:GetActiveLogger()
+{
+    return s_ActiveLogger;
 }
