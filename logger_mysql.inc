@@ -58,15 +58,18 @@
 
 forward MySQL:GetLoggerDatabase(Logger:logger);
 
-forward SetLoggerDatabaseAppend(Logger:logger, bool:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", const columns[][] = {""}, const columns_size = sizeof(columns));
+forward SetLoggerDatabaseAppend(Logger:logger, bool:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", bool:baseSchema = true);
 forward bool:GetLoggerDatabaseAppend(Logger:logger);
 forward GetLoggerDatabaseTable(Logger:logger, output[], const size = sizeof(output));
 forward SetLoggerDatabaseTable(Logger:logger, const table[]);
+forward bool:GetLoggerDatabaseBaseSchema(Logger:logger);
+forward SetLoggerDatabaseBaseSchema(Logger:logger, bool:value);
 forward CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[]);
 
 static enum E_LOGGER_MYSQL_DATA {
     MySQL:E_LOGGER_DB,
     bool:E_LOGGER_DB_APPEND,
+    bool:E_LOGGER_DB_BASE_SCHEMA,
     E_LOGGER_DB_TABLE[MAX_LOGGER_DB_TABLE_LEN char],
     E_LOGGER_DB_COLUMN_COUNT
 }
@@ -118,29 +121,40 @@ static enum e_FieldContent {
 }
 static s_ExtractedField[e_FieldContent];
 
-_OnLoggerAppendField_Mysql(Logger:logger, const field[])
+_OnLoggerAppendField_Mysql(Logger:logger, LogLevel:level, const message[], const field[])
 {
     __strreplace(" ", "", field, strlen(field) + 1);
 
     if(GetLoggerDatabaseAppend(logger)) {
         
 
+        // primer iteracion del buffer
+        // insertar columnas log_level, msg si el usuario asi lo quiso
+        if(s_InsertedRows == 0 && GetLoggerDatabaseBaseSchema(logger)) {
+            new logLevelName[32];
+            GetLogLevelName(level, logLevelName);
+
+            format(s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns), "log_level, msg, ");
+            format(s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values), "'%s', '%s', ", logLevelName, message);
+            s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT] += 2;
+            s_InsertedRows += 2;
+        }
+        // iteraciones posteriores, agregar una comma para separar columnas/fields
+        else if(s_InsertedRows > 0) {
+            strcat(s_QueryBuffer_Values, ", ");
+            strcat(s_QueryBuffer_Columns, ", ");
+        }
+
+
+        // usar sscanf para convertir "key = "value"" en 2 arrays independientes
         new sscanfFormat[64];
         format(sscanfFormat, sizeof(sscanfFormat), "p<=>e<s[%d]s[%d]>", MAX_LOGGER_FIELD_LENGTH, MAX_LOGGER_FIELD_LENGTH);
         sscanf(field, sscanfFormat, s_ExtractedField);
 
 
-        if(s_InsertedRows > 0) {
-            strcat(s_QueryBuffer_Values, ", ");
-            strcat(s_QueryBuffer_Columns, ", ");
-        }
 
-        format(s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values),
-            "%s%s", s_QueryBuffer_Values, s_ExtractedField[e_field_value]
-        );
-        format(s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns),
-            "%s%s", s_QueryBuffer_Columns, s_ExtractedField[e_field_name]
-        );
+        strcat(s_QueryBuffer_Values, s_ExtractedField[e_field_value]);
+        strcat(s_QueryBuffer_Columns, s_ExtractedField[e_field_name]);
 
         s_InsertedRows++;
     }
@@ -155,16 +169,45 @@ _OnLoggerInit_Mysql(Logger:logger)
 
 
 
-stock SetLoggerDatabaseAppend(Logger:logger, bool:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "")
+stock SetLoggerDatabaseAppend(Logger:logger, bool:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", bool:baseSchema = true)
 {
     s_LoggerMysql[logger][E_LOGGER_DB_APPEND] = dbAppend;
     s_LoggerMysql[logger][E_LOGGER_DB] = handle;
-    
     s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT] = 0;
 
 
-	SetLoggerDatabaseTable(logger, table);
+    if(dbAppend) {
+        s_LoggerMysql[logger][E_LOGGER_DB_BASE_SCHEMA] = baseSchema;
+	    SetLoggerDatabaseTable(logger, table);
+        mysql_addtable(GetLoggerDatabase(logger), table);
+
+        
+
+        if(baseSchema) {
+            CreateLoggerDatabaseColumn(logger, "log_level", "VARCHAR(16) DEFAULT NULL");
+            CreateLoggerDatabaseColumn(logger, "msg", "VARCHAR(512) DEFAULT NULL");
+        }
+
+        
+    }
+    else {
+        SetLoggerDatabaseTable(logger, "");
+    }
+
 }
+
+stock bool:GetLoggerDatabaseBaseSchema(Logger:logger)
+{
+    return s_LoggerMysql[logger][E_LOGGER_DB_BASE_SCHEMA];
+}
+
+
+
+stock SetLoggerDatabaseBaseSchema(Logger:logger, bool:value)
+{
+    s_LoggerMysql[logger][E_LOGGER_DB_BASE_SCHEMA] = value;
+}
+
 
 stock bool:GetLoggerDatabaseAppend(Logger:logger)
 {
@@ -185,7 +228,6 @@ stock GetLoggerDatabaseTable(Logger:logger, output[], const size = sizeof(output
 stock SetLoggerDatabaseTable(Logger:logger, const table[])
 {
     strpack(s_LoggerMysql[logger][E_LOGGER_DB_TABLE], table);
-	mysql_addtable(GetLoggerDatabase(logger), table);
 }
 
 stock CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[])
@@ -218,7 +260,7 @@ stock CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[]
 
 
 
-static stock strclean(output[], const size = sizeof(output))
+static stock __strclean(output[], const size = sizeof(output))
 {
     for(new idx; idx < size; idx++) {
         output[idx] = 0;

@@ -229,7 +229,7 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
                 field[ch] = getarg(arg, ch);
                 if(field[ch] == EOS) {
                     #if defined LOGGER_USE_MYSQL
-                    _OnLoggerAppendField_Mysql(logger, field);
+                    _OnLoggerAppendField_Mysql(logger, level, message, field);
                     #endif
 
                     strcat(s_Buffer, ", ");
