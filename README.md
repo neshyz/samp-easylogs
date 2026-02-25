@@ -90,3 +90,89 @@ stock LoggerField:logger_vehicle(vehId)
 
 
 ```
+
+
+
+# logger_mysql
+
+Es un modulo opcional que hace todo el trabajo de exportar logs a tu base de datos MySQL.
+Para usarlo, deberas realizar la siguiente configuracion:
+
+```pawn
+
+
+#include <a_mysql>
+// a_mysql debe estar incluido antes que logger y logger_mysql
+
+#define LOGGER_USE_MYSQL // logger.inc necesita este define para incluir algunas porciones de codigo 
+#define LOGGER_USE_CALLBACKS // al usar este define (con o sin mysql), se activan los callbacks OnLoggerLog y OnLoggerInit
+#define LOGGER_USE_INIT_CALLBACKS // complementario con LOGGER_USE_CALLBACKS, pero nos aseguramos que OnLoggerInit este activo
+#define LOGGER_USE_LOG_CALLBACKS // nos aseguramos que OnLoggerLog este activo
+#include <logger>
+#include <logger_mysql>
+
+```
+
+
+
+Ahora ya puedes:
+
+```pawn
+
+new Logger:g_log_Connection = INVALID_LOGGER_ID;
+
+public OnGameModeInit()
+{
+    handle_db = ezmysql_connect("127.0.0.1", ....);
+
+    g_log_Connection = GetLogger("connections", .level = LOG_WARN);
+    
+    // activar el database appending para un logger
+    SetLoggerDatabaseAppend(
+        .logger = g_log_Connection,
+        .dbAppend = true, // toggle, puedes usar la misma funcion para desactivar, dejando el resto de parametros en por defecto 
+        .handle = handle_db, // handler mysql
+        .table = "log_connections", // el nombre de la tabla en la que estaremos exportando
+        .baseSchema = true // incluir opcionalmente 'log_level' y 'msg' en la estructura de la tabla
+    );
+
+    // crear columnas para la base de datos de un logger
+    CreateLoggerDatabaseColumn(
+        .logger = g_log_Connection,
+        .column = "playerid", //  nombre de la columna
+        .typeData = "INTEGER DEFAULT 0" // tipo de dato junto a su default o informacion extra
+    );
+
+    CreateLoggerDatabaseColumn(g_log_Connection, "username", "VARCHAR(64) DEFAULT NULL");
+    CreateLoggerDatabaseColumn(g_log_Connection, "ip", "VARCHAR(64) DEFAULT NULL");
+    CreateLoggerDatabaseColumn(g_log_Connection, "version", "VARCHAR(64) DEFAULT NULL");
+}
+
+
+
+...
+
+public OnPlayerConnect(playerid)
+{
+    new name[MAX_PLAYER_NAME], version[16], ip[16];
+    GetPlayerName(playerid, name);
+    GetPlayerVersion(playerid, version);
+    GetPlayerIp(playerid, ip);
+
+    // envia tus logs normalmente, no debes cambiar nada
+    sendlog(g_log_Connection, LOG_TRACE, "connection incoming",
+        // el nombre de tus fields debe ser exactamente igual al de las columnas para que las inserciones no fallen
+        logger_int("playerid", playerid),
+        logger_string("username", name),
+        logger_string("version", version),
+        logger_string("ip", ip),
+    );
+}
+```
+
+
+query result:
+
+```sql
+INSERT INTO log_connections (log_level, msg, username, ip, version) VALUES ('warn', 'player connection', 'Neshy', '127.0.0.1', '0.3.7');
+```
