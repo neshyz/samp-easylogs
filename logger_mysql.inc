@@ -123,7 +123,7 @@ static s_ExtractedField[e_FieldContent];
 
 _OnLoggerAppendField_Mysql(Logger:logger, LogLevel:level, const message[], const field[])
 {
-    __strreplace(" ", "", field, strlen(field) + 1);
+    // __strreplace(" ", "", field, strlen(field) + 1);
 
     if(GetLoggerDatabaseAppend(logger)) {
         
@@ -151,6 +151,7 @@ _OnLoggerAppendField_Mysql(Logger:logger, LogLevel:level, const message[], const
         format(sscanfFormat, sizeof(sscanfFormat), "p<=>e<s[%d]s[%d]>", MAX_LOGGER_FIELD_LENGTH, MAX_LOGGER_FIELD_LENGTH);
         sscanf(field, sscanfFormat, s_ExtractedField);
 
+        __strreplace(" ", "", s_ExtractedField[e_field_name], strlen(s_ExtractedField[e_field_name]) + 1);
 
 
         strcat(s_QueryBuffer_Values, s_ExtractedField[e_field_value]);
