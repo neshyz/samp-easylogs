@@ -365,8 +365,6 @@ stock GetLoggerConsoleAppend(Logger:logger)
 
 stock SetLoggerFileAppend(Logger:logger, bool:fileAppend)
 {
-    s_LoggerData[logger][E_LOGGER_APPEND_FILE] = fileAppend;
-
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
         OpenLoggerFile(logger);
     }
@@ -374,6 +372,7 @@ stock SetLoggerFileAppend(Logger:logger, bool:fileAppend)
         CloseLoggerFile(logger);
     }
 
+    s_LoggerData[logger][E_LOGGER_APPEND_FILE] = fileAppend;
 }
 
 
