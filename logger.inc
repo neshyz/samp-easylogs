@@ -320,7 +320,7 @@ stock GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
             format(output, size, "info");
         }
         case LOG_WARN: {
-            format(output, size, "warning");
+            format(output, size, "warn");
         }
         case LOG_ERROR: {
             format(output, size, "error");
