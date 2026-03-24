@@ -84,6 +84,8 @@ static s_QueryBuffer[MAX_LOGGER_DB_QUERY_LEN],
 
 _OnLoggerLog_Mysql(Logger:logger, LogLevel:level, const msg[])
 {
+    #pragma unused msg
+    
     if(GetLoggerDatabaseAppend(logger) && s_InsertedRows > 0) {
 
         new tableName[MAX_LOGGER_DB_TABLE_LEN];
