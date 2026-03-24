@@ -18,7 +18,7 @@ static enum E_LOGGER_DISCORD_DATA {
     bool:E_LOGGER_USE_DISCORD,
     E_LOGGER_CHANNEL_NAME[MAX_LOGGER_DISCORD_CHANNEL_SIZE char],
 }
-static s_LoggerDiscord[MAX_LOGGERS][E_LOGGER_DISCORD_DATA];
+static s_LoggerDiscord[Logger:MAX_LOGGERS][E_LOGGER_DISCORD_DATA];
 
 
 _OnLoggerLog_Discord(const Logger:logger, const LogLevel:level, const msg[])
