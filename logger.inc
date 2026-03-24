@@ -365,10 +365,10 @@ stock GetLoggerConsoleAppend(Logger:logger)
 
 stock SetLoggerFileAppend(Logger:logger, bool:fileAppend)
 {
-    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
+    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE] && !fileAppend) {
         CloseLoggerFile(logger);
     }
-    else {
+    else if(!s_LoggerData[logger][E_LOGGER_APPEND_FILE] && fileAppend) {
         OpenLoggerFile(logger);
     }
 
