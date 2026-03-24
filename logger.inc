@@ -251,6 +251,10 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
         #if defined LOGGER_USE_MYSQL
             _OnLoggerLog_Mysql(logger, level, s_Buffer);
         #endif
+
+        #if defined LOGGER_USE_DISCORD
+            _OnLoggerLog_Discord(logger, level, s_Buffer);
+        #endif
     #endif
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
         fwrite(s_LoggerData[logger][E_LOGGER_FILE], s_Buffer);
