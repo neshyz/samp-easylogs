@@ -31,10 +31,10 @@ _OnLoggerLog_Discord(const Logger:logger, const LogLevel:level, const msg[])
         discordChannelName[MAX_LOGGER_DISCORD_CHANNEL_SIZE],
         logLevelName[32];
 
-    strunpack(s_LoggerDiscord[logger][E_LOGGER_CHANNEL_NAME], discordChannelName);
+    strunpack(discordChannelName, s_LoggerDiscord[logger][E_LOGGER_CHANNEL_NAME]);
     GetLogLevelName(level, logLevelName);
 
-    CallRemoteFunction("SendDiscordMessage", "sss", discordChannelName, logLevelName, msg);
+    CallRemoteFunction("SendDiscordMessage", "sss", logLevelName, msg, discordChannelName);
 }
 
 
