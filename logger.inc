@@ -232,6 +232,10 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
                     _OnLoggerAppendField_Mysql(logger, level, message, field);
                     #endif
 
+                    #if defined LOGGER_USE_DISCORD
+                    _OnLoggerAppendField_Discord(logger, level, message, field);
+                    #endif
+
                     strcat(s_Buffer, ", ");
                     strcat(s_Buffer, field);
                     break;
