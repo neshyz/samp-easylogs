@@ -107,8 +107,6 @@ _OnLoggerLog_Mysql(Logger:logger, LogLevel:level, const msg[])
 
         mysql_tquery(GetLoggerDatabase(logger), s_QueryBuffer);
 
-        printf("final query %s", s_QueryBuffer);
-        
         format(s_QueryBuffer, sizeof(s_QueryBuffer), "");
         format(s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns), "");
         format(s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values), "");
