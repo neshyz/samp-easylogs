@@ -318,6 +318,12 @@ static stock GetDateString(output[], const size = sizeof(output))
 stock GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
 {
     switch(level) {
+        case LOG_ALL: {
+            format(output, size, "all");
+        }
+        case LOG_NO: {
+            format(output, size, "no");
+        }
         case LOG_TRACE: {
             format(output, size, "trace");
         }
@@ -438,7 +444,7 @@ stock LogLevel:GetLogLevelId(const logLevelName[])
     for(new LogLevel:level; level < LogLevel; level++) {
         GetLogLevelName(level, tempName);
 
-        if(strcmp(logLevelName, tempName, false) == 0) {
+        if(strcmp(logLevelName, tempName, false) == 0 && !easylogs_isempty(tempName)) {
             return level;
         }
     }
