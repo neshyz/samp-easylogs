@@ -448,3 +448,20 @@ stock Logger:GetActiveLogger()
 {
     return s_ActiveLogger;
 }
+
+
+
+
+
+
+
+
+
+
+
+stock easylogs_isempty(const string[]) {
+	if (ispacked(string))
+		return string{0} == '\0';
+	else
+		return string[0] == '\0';
+}
