@@ -85,24 +85,3 @@ SetLoggerDiscordAppend(const Logger:logger, const bool:discordAppend, const chan
         strpack(s_LoggerDiscord[logger][E_LOGGER_CHANNEL_NAME], channelName);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-static stock easylogs_isempty(const string[]) {
-	if (ispacked(string))
-		return string{0} == '\0';
-	else
-		return string[0] == '\0';
-}
