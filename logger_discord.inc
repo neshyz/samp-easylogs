@@ -42,6 +42,10 @@ _OnLoggerLog_Discord(const Logger:logger, const LogLevel:level, const msg[])
         return;
     }
 
+    if(s_FieldCount < 1) {
+        format(s_MessageBuffer, sizeof(s_MessageBuffer), " ");
+    }
+
     new
         discordChannelName[MAX_LOGGER_DISCORD_CHANNEL_SIZE];
 
