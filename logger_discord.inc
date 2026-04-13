@@ -43,6 +43,7 @@ _OnLoggerLog_Discord(const Logger:logger, const LogLevel:level, const msg[])
     }
 
     if(s_FieldCount < 1) {
+        format(s_TitleBuffer, sizeof(s_TitleBuffer), msg);
         format(s_MessageBuffer, sizeof(s_MessageBuffer), " ");
     }
 
