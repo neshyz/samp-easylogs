@@ -102,7 +102,7 @@ _OnLoggerLog_Mysql(Logger:logger, LogLevel:level, const msg[])
 
         mysql_format(GetLoggerDatabase(logger),
             s_QueryBuffer, sizeof(s_QueryBuffer),
-            "INSERT INTO %e (%e) VALUES (%e);", tableName, s_QueryBuffer_Columns, s_QueryBuffer_Values
+            "INSERT INTO %s (%s) VALUES (%s);", tableName, s_QueryBuffer_Columns, s_QueryBuffer_Values
         );
 
         mysql_tquery(GetLoggerDatabase(logger), s_QueryBuffer);
@@ -150,15 +150,15 @@ _OnLoggerAppendField_Mysql(Logger:logger, LogLevel:level, const message[], const
 
             new fieldFormat[MAX_LOGGER_FIELD_LENGTH];
             format(fieldFormat, sizeof(fieldFormat),
-                "'%s'", logLevelName
+                "%s", logLevelName
             );
-            AppendField("log_level", fieldFormat);
+            AppendField(logger, "log_level", fieldFormat);
 
 
             format(fieldFormat, sizeof(fieldFormat),
-                "'%s'", message
+                "%s", message
             );
-            AppendField("msg", fieldFormat);
+            AppendField(logger, "msg", fieldFormat);
         }
         
         
@@ -168,20 +168,25 @@ _OnLoggerAppendField_Mysql(Logger:logger, LogLevel:level, const message[], const
         
 
 
-        AppendField(s_ExtractedField[e_field_name], s_ExtractedField[e_field_value]);
+        AppendField(logger, s_ExtractedField[e_field_name], s_ExtractedField[e_field_value]);
     }
 }
 
 
-static AppendField(const field[], const content[])
+static AppendField(Logger:logger, const field[], const content[])
 {
     if(s_InsertedRows > 0) {
         strcat(s_QueryBuffer_Values, ", ");
         strcat(s_QueryBuffer_Columns, ", ");
     }
 
-    strcat(s_QueryBuffer_Values, content);
-    strcat(s_QueryBuffer_Columns, field);
+    mysql_format(GetLoggerDatabase(logger), s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values),
+        "%s'%e'", s_QueryBuffer_Values, content
+    );
+
+    mysql_format(GetLoggerDatabase(logger), s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns),
+        "%s`%e`", s_QueryBuffer_Columns, field
+    );
 
     s_InsertedRows++;
 }
