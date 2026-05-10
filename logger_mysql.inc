@@ -102,7 +102,7 @@ _OnLoggerLog_Mysql(Logger:logger, LogLevel:level, const msg[])
 
         mysql_format(GetLoggerDatabase(logger),
             s_QueryBuffer, sizeof(s_QueryBuffer),
-            "INSERT INTO %s (%s) VALUES (%s);", tableName, s_QueryBuffer_Columns, s_QueryBuffer_Values
+            "INSERT INTO %e (%e) VALUES (%e);", tableName, s_QueryBuffer_Columns, s_QueryBuffer_Values
         );
 
         mysql_tquery(GetLoggerDatabase(logger), s_QueryBuffer);
