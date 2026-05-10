@@ -138,7 +138,7 @@ forward sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
 ezlogs_init()
 {
-    for(new Logger:logger; logger < MAX_LOGGERS; logger++) {
+    for(new Logger:logger; logger < Logger:MAX_LOGGERS; logger++) {
         s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE] = LOG_OFF;
         s_LoggerData[logger][E_LOGGER_APPEND_FILE] = LOG_OFF;
         #if defined LOGGER_USE_MYSQL
@@ -146,7 +146,7 @@ ezlogs_init()
         #endif
 
         #if defined LOGGER_USE_DISCORD
-            SetLoggerDiscordAppend(logger, LOG_OFF);
+            SetLoggerDiscordAppend(logger, LOG_OFF, "");
         #endif
         
         s_LoggerData[logger][E_LOGGER_LEVEL] = LOG_OFF;
