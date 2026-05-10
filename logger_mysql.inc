@@ -58,8 +58,8 @@
 
 forward MySQL:GetLoggerDatabase(Logger:logger);
 
-forward SetLoggerDatabaseAppend(Logger:logger, bool:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", bool:baseSchema = true);
-forward bool:GetLoggerDatabaseAppend(Logger:logger);
+forward SetLoggerDatabaseAppend(Logger:logger, LogLevel:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", bool:baseSchema = true);
+forward LogLevel:GetLoggerDatabaseAppend(Logger:logger);
 forward GetLoggerDatabaseTable(Logger:logger, output[], const size = sizeof(output));
 forward SetLoggerDatabaseTable(Logger:logger, const table[]);
 forward bool:GetLoggerDatabaseBaseSchema(Logger:logger);
@@ -68,7 +68,7 @@ forward CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData
 
 static enum E_LOGGER_MYSQL_DATA {
     MySQL:E_LOGGER_DB,
-    bool:E_LOGGER_DB_APPEND,
+    LogLevel:E_LOGGER_DB_APPEND,
     bool:E_LOGGER_DB_BASE_SCHEMA,
     E_LOGGER_DB_TABLE[MAX_LOGGER_DB_TABLE_LEN char],
     E_LOGGER_DB_COLUMN_COUNT
@@ -86,7 +86,7 @@ _OnLoggerLog_Mysql(Logger:logger, LogLevel:level, const msg[])
 {
     #pragma unused msg
     
-    if(GetLoggerDatabaseAppend(logger) && s_InsertedRows > 0) {
+    if(level >= GetLoggerDatabaseAppend(logger) && s_InsertedRows > 0) {
 
         new tableName[MAX_LOGGER_DB_TABLE_LEN];
         GetLoggerDatabaseTable(logger, tableName);
@@ -125,7 +125,7 @@ _OnLoggerAppendField_Mysql(Logger:logger, LogLevel:level, const message[], const
 {
     // __strreplace(" ", "", field, strlen(field) + 1);
 
-    if(GetLoggerDatabaseAppend(logger)) {
+    if(level >= GetLoggerDatabaseAppend(logger)) {
         
 
 
@@ -214,7 +214,7 @@ static IsLoggerFieldCreated(Logger:logger, const field[])
     return 0;
 }
 
-stock SetLoggerDatabaseAppend(Logger:logger, bool:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", bool:baseSchema = true)
+stock SetLoggerDatabaseAppend(Logger:logger, LogLevel:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", bool:baseSchema = true)
 {
     s_LoggerMysql[logger][E_LOGGER_DB_APPEND] = dbAppend;
     s_LoggerMysql[logger][E_LOGGER_DB] = handle;
@@ -254,7 +254,7 @@ stock SetLoggerDatabaseBaseSchema(Logger:logger, bool:value)
 }
 
 
-stock bool:GetLoggerDatabaseAppend(Logger:logger)
+stock LogLevel:GetLoggerDatabaseAppend(Logger:logger)
 {
     return s_LoggerMysql[logger][E_LOGGER_DB_APPEND];
 }

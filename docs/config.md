@@ -1,4 +1,4 @@
-# easymysql config options
+# easylogs config options
 
 All options that will get discussed in this section are `#define` constants that you can override to customize your logging experience.
 Value in parenthesis is the default.

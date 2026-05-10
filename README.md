@@ -9,6 +9,17 @@ Primero, importa la librería después de `a_samp`
 #include <logger>
 ```
 
+
+Inicializa en OnGameModeInit:
+
+```pawn
+public OnGameModeInit()
+{
+    ezlogs_init();
+}
+```
+
+
 Crear un logger:
 ```pawn
 new Logger:logger = GetLogger("server");
@@ -18,13 +29,13 @@ new Logger:logger = GetLogger("server");
 
 Crear un logger que no exporte archivos y LogLevel personalizado:
 ```pawn
-new Logger:logger = GetLogger("mysql", false, LOG_ERROR); // printeará errores a consola
+new Logger:logger = GetLogger("mysql", .fileAppend = LOG_OFF, .consoleAppend = LOG_ERROR, .level = LOG_ALL); // printeará errores a consola
 ```
 
 Una vez instanciado el logger, puedes usarlo con `logger_int, logger_float, logger_string`:
 
 ```pawn
-new Logger:g_PlayerLogger = GetLogger("players", false, LOG_ERROR); // printeará errores a consola
+new Logger:g_PlayerLogger = GetLogger("players", .fileAppend = LOG_OFF, .consoleAppend = LOG_ERROR, .level = LOG_INFO); // printeará errores a consola
 
 ...
 
@@ -35,7 +46,7 @@ public OnPlayerConnect(playerid)
     GetPlayerIp(playerid, ip);
     GetPlayerVersion(playerid, version);
 
-    sendlog(g_PlayerLogger, LOG_WARN, "player connection",
+    sendlog(g_PlayerLogger, LOG_INFO, "player connection",
         logger_string("username", name),
         logger_string("ip", ip),
         logger_string("version", version)
@@ -47,12 +58,26 @@ public OnPlayerConnect(playerid)
 
 ```
 
-Pero el log no se mostrará, porque definimos nuestro logger con un nivel de ERROR. Para esto, la librería permite cambiar el LogLevel de un logger handler en tiempo de ejecución:
+Pero el log no se mostrará, porque definimos nuestro logger con un nivel global de INFO, pero ConsoleAppender con un nivel de ERROR.
+
+Para esto, la librería permite cambiar el LogLevel global de un handler en tiempo de ejecución, así como sus appenders:
 
 ```pawn
 SetLoggerLogLevel(g_PlayerLogger, LOG_ALL);
+SetLoggerConsoleAppend(g_PlayerLogger, LOG_ERROR);
+SetLoggerFileAppend(g_PlayerLogger, LOG_DEBUG);
 ```
 
+## Pero espera... Hay tres "LogLevel" en lugar de uno, por qué?
+
+**fileAppend:**  ajusta el LogLevel del file appender,   LOG_OFF significa que este appender esta apagado.
+**consoleAppend:** ajusta el LogLevel del console appender, LOG_OFF significa que este appender esta apagado.
+**level:** ajusta el LogLevel global del logger
+
+## Caso hipotético
+
+**level** equivale a `LOG_WARN`, **consoleAppend** equivale a `LOG_ERROR` y **fileAppend** a `LOG_ALL`.
+El comportamiento que conseguimos es que todos los mensajes warning se envíen a un archivo y los errores o fatales se muestren en consola.
 
 # Defines
 
@@ -123,14 +148,14 @@ new Logger:g_log_Connection = INVALID_LOGGER_ID;
 
 public OnGameModeInit()
 {
-    handle_db = ezmysql_connect("127.0.0.1", ....);
+    handle_db = ezmysql_connect("127.0.0.1", ....); // tenes que usar easy-mysql, que viene incluida con easylogs pero recomiendo bajarla aparte
 
-    g_log_Connection = GetLogger("connections", .level = LOG_WARN);
+    g_log_Connection = GetLogger("connections", .fileAppend = LOG_ALL, .consoleAppend = LOG_ERROR, .level = LOG_ALL);
     
     // activar el database appending para un logger
     SetLoggerDatabaseAppend(
         .logger = g_log_Connection,
-        .dbAppend = true, // toggle, puedes usar la misma funcion para desactivar, dejando el resto de parametros en por defecto 
+        .dbAppend = LOG_INFO, // puedes usar la misma funcion para desactivar (LOG_OFF), dejando el resto de parametros en por defecto 
         .handle = handle_db, // handler mysql
         .table = "log_connections", // el nombre de la tabla en la que estaremos exportando
         .baseSchema = true // incluir opcionalmente 'log_level' y 'msg' en la estructura de la tabla
