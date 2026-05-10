@@ -29,6 +29,9 @@
 #endif
 
 
+static bool:s_LoggerInit = false;
+
+
 enum LogLevel {
     LOG_ALL,
     LOG_TRACE,
@@ -46,8 +49,8 @@ static enum E_LOGGER_DATA {
     E_LOGGER_NAME[MAX_LOGGER_NAME_LENGTH char],
     File:E_LOGGER_FILE,
     bool:E_LOGGER_VALID,
-    bool:E_LOGGER_APPEND_FILE,
-    bool:E_LOGGER_APPEND_CONSOLE,
+    LogLevel:E_LOGGER_APPEND_FILE,
+    LogLevel:E_LOGGER_APPEND_CONSOLE,
     LogLevel:E_LOGGER_LEVEL
 }
 
@@ -85,11 +88,11 @@ forward LogLevel:GetLogLevelId(const logLevelName[]);
 
 
 // configuracion de logger en tiempo de ejecucion
-forward SetLoggerConsoleAppend(Logger:logger, bool:consoleAppend);
-forward GetLoggerConsoleAppend(Logger:logger);
+forward SetLoggerConsoleAppend(Logger:logger, LogLevel:consoleAppend);
+forward LogLevel:GetLoggerConsoleAppend(Logger:logger);
 
-forward SetLoggerFileAppend(Logger:logger, bool:fileAppend);
-forward GetLoggerFileAppend(Logger:logger);
+forward SetLoggerFileAppend(Logger:logger, LogLevel:fileAppend);
+forward LogLevel:GetLoggerFileAppend(Logger:logger);
 
 // retorna true si el logger esta inicializado, false si el logger es invalido y no existe
 forward bool:IsValidLogger(Logger:logger);
@@ -105,7 +108,7 @@ forward LoggerField:logger_float(const name[], Float:value);
 
 
 // GetLogger permite generar un nuevo logger con configuración independiente
-forward Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppend = true, LogLevel:level = LOG_WARN);
+forward Logger:GetLogger(const handlerName[], LogLevel:fileAppend = LOG_OFF, LogLevel:consoleAppend = LOG_OFF, LogLevel:level = LOG_WARN);
 
 
 
@@ -128,8 +131,43 @@ forward sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
 
 
-Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppend = true, LogLevel:level = LOG_WARN)
+
+
+
+
+
+ezlogs_init()
 {
+    for(new Logger:logger; logger < MAX_LOGGERS; logger++) {
+        s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE] = LOG_OFF;
+        s_LoggerData[logger][E_LOGGER_APPEND_FILE] = LOG_OFF;
+        #if defined LOGGER_USE_MYSQL
+            SetLoggerDatabaseAppend(logger, LOG_OFF);
+        #endif
+
+        #if defined LOGGER_USE_DISCORD
+            SetLoggerDiscordAppend(logger, LOG_OFF);
+        #endif
+        
+        s_LoggerData[logger][E_LOGGER_LEVEL] = LOG_OFF;
+        s_LoggerData[logger][E_LOGGER_VALID] = false;
+    }
+    s_LoggerInit = true;
+}
+
+
+
+
+
+
+
+Logger:GetLogger(const handlerName[], LogLevel:fileAppend = LOG_OFF, LogLevel:consoleAppend = LOG_OFF, LogLevel:level = LOG_WARN)
+{
+    if(!s_LoggerInit) {
+        printf("usa \"ezmysql_init()\"  para inicializar easylogs!");
+        return INVALID_LOGGER_ID;
+    }
+
     new Logger:logger = INVALID_LOGGER_ID;
 
     for(new Logger:i_logger; i_logger < Logger:MAX_LOGGERS; i_logger++) {
@@ -156,7 +194,7 @@ Logger:GetLogger(const handlerName[], bool:fileAppend = false, bool:consoleAppen
 
     s_LoggerData[logger][E_LOGGER_APPEND_FILE] = fileAppend;
 
-    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
+    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE] != LOG_OFF) {
         OpenLoggerFile(logger);
     }
 
@@ -200,6 +238,11 @@ static stock CloseLoggerFile(Logger:logger)
 
 sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 {
+    if(!s_LoggerInit) {
+        printf("usa \"ezmysql_init()\"  para inicializar easylogs!");
+        return;
+    }
+
     if(logger == INVALID_LOGGER_ID || level < s_LoggerData[logger][E_LOGGER_LEVEL]) {
         return;
     }
@@ -260,11 +303,11 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
             _OnLoggerLog_Discord(logger, level, s_Buffer);
         #endif
     #endif
-    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
+    if(level >= s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
         fwrite(s_LoggerData[logger][E_LOGGER_FILE], s_Buffer);
     }
     
-    if(s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE]) {
+    if(level >= s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE]) {
         print(s_Buffer);
     }
 
@@ -322,7 +365,7 @@ stock GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
             format(output, size, "all");
         }
         case LOG_OFF: {
-            format(output, size, "no");
+            format(output, size, "off");
         }
         case LOG_TRACE: {
             format(output, size, "trace");
@@ -364,25 +407,25 @@ stock LogLevel:GetLoggerLevel(Logger:logger)
 
 
 
-stock SetLoggerConsoleAppend(Logger:logger, bool:consoleAppend)
+stock SetLoggerConsoleAppend(Logger:logger, LogLevel:consoleAppend)
 {
     s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE] = consoleAppend;
 }
 
 
-stock GetLoggerConsoleAppend(Logger:logger)
+stock LogLevel:GetLoggerConsoleAppend(Logger:logger)
 {
     return s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE];
 }
 
 
 
-stock SetLoggerFileAppend(Logger:logger, bool:fileAppend)
+stock SetLoggerFileAppend(Logger:logger, LogLevel:fileAppend)
 {
-    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE] && !fileAppend) {
+    if(s_LoggerData[logger][E_LOGGER_APPEND_FILE] != LOG_OFF && fileAppend == LOG_OFF) {
         CloseLoggerFile(logger);
     }
-    else if(!s_LoggerData[logger][E_LOGGER_APPEND_FILE] && fileAppend) {
+    else if(!s_LoggerData[logger][E_LOGGER_APPEND_FILE] == LOG_OFF && fileAppend != LOG_OFF) {
         OpenLoggerFile(logger);
     }
 
@@ -390,7 +433,7 @@ stock SetLoggerFileAppend(Logger:logger, bool:fileAppend)
 }
 
 
-stock GetLoggerFileAppend(Logger:logger)
+stock LogLevel:GetLoggerFileAppend(Logger:logger)
 {
     return s_LoggerData[logger][E_LOGGER_APPEND_FILE];
 }
@@ -413,7 +456,7 @@ stock CloseLoggers()
     new count;
     for(new Logger:logger; logger < Logger:MAX_LOGGERS; logger++) {
         if(s_LoggerData[logger][E_LOGGER_VALID]) {
-            if(s_LoggerData[logger][E_LOGGER_APPEND_FILE]) {
+            if(s_LoggerData[logger][E_LOGGER_APPEND_FILE] != LOG_OFF) {
                 CloseLoggerFile(logger);
             }
 
