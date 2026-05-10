@@ -29,6 +29,9 @@
 #endif
 
 
+static bool:s_LoggerInit = false;
+
+
 enum LogLevel {
     LOG_ALL,
     LOG_TRACE,
@@ -128,8 +131,43 @@ forward sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
 
 
+
+
+
+
+
+ezlogs_init()
+{
+    for(new Logger:logger; logger < MAX_LOGGERS; logger++) {
+        s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE] = LOG_OFF;
+        s_LoggerData[logger][E_LOGGER_APPEND_FILE] = LOG_OFF;
+        #if defined LOGGER_USE_MYSQL
+            SetLoggerDatabaseAppend(logger, LOG_OFF);
+        #endif
+
+        #if defined LOGGER_USE_DISCORD
+            SetLoggerDiscordAppend(logger, LOG_OFF);
+        #endif
+        
+        s_LoggerData[logger][E_LOGGER_LEVEL] = LOG_OFF;
+        s_LoggerData[logger][E_LOGGER_VALID] = false;
+    }
+    s_LoggerInit = true;
+}
+
+
+
+
+
+
+
 Logger:GetLogger(const handlerName[], LogLevel:fileAppend = LOG_OFF, LogLevel:consoleAppend = LOG_OFF, LogLevel:level = LOG_WARN)
 {
+    if(!s_LoggerInit) {
+        printf("usa \"ezmysql_init()\"  para inicializar easylogs!");
+        return INVALID_LOGGER_ID;
+    }
+
     new Logger:logger = INVALID_LOGGER_ID;
 
     for(new Logger:i_logger; i_logger < Logger:MAX_LOGGERS; i_logger++) {
@@ -200,6 +238,11 @@ static stock CloseLoggerFile(Logger:logger)
 
 sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 {
+    if(!s_LoggerInit) {
+        printf("usa \"ezmysql_init()\"  para inicializar easylogs!");
+        return;
+    }
+
     if(logger == INVALID_LOGGER_ID || level < s_LoggerData[logger][E_LOGGER_LEVEL]) {
         return;
     }
