@@ -314,7 +314,7 @@ stock GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
             format(output, size, "all");
         }
         case LOG_OFF: {
-            format(output, size, "no");
+            format(output, size, "off");
         }
         case LOG_TRACE: {
             format(output, size, "trace");
