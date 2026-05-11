@@ -425,7 +425,7 @@ stock SetLoggerFileAppend(Logger:logger, LogLevel:fileAppend)
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE] != LOG_OFF && fileAppend == LOG_OFF) {
         CloseLoggerFile(logger);
     }
-    else if(!s_LoggerData[logger][E_LOGGER_APPEND_FILE] == LOG_OFF && fileAppend != LOG_OFF) {
+    else if(s_LoggerData[logger][E_LOGGER_APPEND_FILE] == LOG_OFF && fileAppend != LOG_OFF) {
         OpenLoggerFile(logger);
     }
 
