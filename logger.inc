@@ -164,7 +164,6 @@ ezlogs_init()
 Logger:GetLogger(const handlerName[], LogLevel:fileAppend = LOG_OFF, LogLevel:consoleAppend = LOG_OFF, LogLevel:level = LOG_WARN)
 {
     if(!s_LoggerInit) {
-        printf("usa \"ezmysql_init()\"  para inicializar easylogs!");
         return INVALID_LOGGER_ID;
     }
 
@@ -239,7 +238,6 @@ static stock CloseLoggerFile(Logger:logger)
 sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 {
     if(!s_LoggerInit) {
-        printf("usa \"ezmysql_init()\"  para inicializar easylogs!");
         return;
     }
 
