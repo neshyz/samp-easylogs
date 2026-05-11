@@ -221,7 +221,7 @@ stock SetLoggerDatabaseAppend(Logger:logger, LogLevel:dbAppend, MySQL:handle = M
     s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT] = 0;
 
 
-    if(dbAppend) {
+    if(dbAppend != LOG_OFF) {
         s_LoggerMysql[logger][E_LOGGER_DB_BASE_SCHEMA] = baseSchema;
 	    SetLoggerDatabaseTable(logger, table);
         mysql_addtable(GetLoggerDatabase(logger), table);
