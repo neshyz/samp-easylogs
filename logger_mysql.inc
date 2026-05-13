@@ -97,10 +97,10 @@ _OnLoggerLog_Mysql(Logger:logger, LogLevel:level, const msg[])
 
 
 
-        __strreplace("\"", "'", s_QueryBuffer_Values);
+        __strreplace("\"", "", s_QueryBuffer_Values);
         __strreplace("\"", "`", s_QueryBuffer_Columns);
 
-        mysql_format(GetLoggerDatabase(logger),
+        format(
             s_QueryBuffer, sizeof(s_QueryBuffer),
             "INSERT INTO %s (%s) VALUES (%s);", tableName, s_QueryBuffer_Columns, s_QueryBuffer_Values
         );
@@ -135,6 +135,7 @@ _OnLoggerAppendField_Mysql(Logger:logger, LogLevel:level, const message[], const
         sscanf(field, sscanfFormat, s_ExtractedField);
 
         __strreplace(" ", "", s_ExtractedField[e_field_name], strlen(s_ExtractedField[e_field_name]) + 1);
+        __strreplace("\"", "", s_ExtractedField[e_field_value], strlen(s_ExtractedField[e_field_value]) + 1);
         
         if(!IsLoggerFieldCreated(logger, s_ExtractedField[e_field_name])) {
             return;
@@ -173,22 +174,38 @@ _OnLoggerAppendField_Mysql(Logger:logger, LogLevel:level, const message[], const
 }
 
 
+static
+    s_TempFields[MAX_LOGGER_DB_BUFFER_LEN],
+    s_TempContents[MAX_LOGGER_DB_BUFFER_LEN]
+;
+
 static AppendField(Logger:logger, const field[], const content[])
 {
+    printf("AppendField(%s, %s)", field, content);
+
     if(s_InsertedRows > 0) {
         strcat(s_QueryBuffer_Values, ", ");
         strcat(s_QueryBuffer_Columns, ", ");
     }
-
-    mysql_format(GetLoggerDatabase(logger), s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values),
+   
+    
+    mysql_format(GetLoggerDatabase(logger), s_TempFields, sizeof(s_TempFields),
+        "%s`%s`", s_QueryBuffer_Columns, field
+    );
+    
+    mysql_format(GetLoggerDatabase(logger), s_TempContents, sizeof(s_TempContents),
         "%s'%e'", s_QueryBuffer_Values, content
     );
 
-    mysql_format(GetLoggerDatabase(logger), s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns),
-        "%s`%e`", s_QueryBuffer_Columns, field
-    );
+    format(s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values), "%s", s_TempContents);
+    format(s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns), "%s", s_TempFields);
+
+    printf("query values = %s", s_QueryBuffer_Values);
 
     s_InsertedRows++;
+
+    __strclean(s_TempFields);
+    __strclean(s_TempContents);
 }
 
 _OnLoggerInit_Mysql(Logger:logger)
