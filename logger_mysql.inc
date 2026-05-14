@@ -181,8 +181,6 @@ static
 
 static AppendField(Logger:logger, const field[], const content[])
 {
-    printf("AppendField(%s, %s)", field, content);
-
     if(s_InsertedRows > 0) {
         strcat(s_QueryBuffer_Values, ", ");
         strcat(s_QueryBuffer_Columns, ", ");
@@ -199,8 +197,6 @@ static AppendField(Logger:logger, const field[], const content[])
 
     format(s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values), "%s", s_TempContents);
     format(s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns), "%s", s_TempFields);
-
-    printf("query values = %s", s_QueryBuffer_Values);
 
     s_InsertedRows++;
 
