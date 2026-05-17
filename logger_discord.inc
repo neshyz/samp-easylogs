@@ -86,7 +86,7 @@ SetLoggerDiscordAppend(const Logger:logger, const LogLevel:discordAppend, const 
 {
     s_LoggerDiscord[logger][E_LOGGER_DISCORD_APPEND] = discordAppend;
 
-    if(discordAppend) {
+    if(discordAppend != LOG_OFF) {
         strpack(s_LoggerDiscord[logger][E_LOGGER_CHANNEL_NAME], channelName);
     }
 }
