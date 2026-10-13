@@ -84,6 +84,11 @@ _OnLoggerAppendField_Discord(const Logger:logger, const LogLevel:level, const ms
 
 SetLoggerDiscordAppend(const Logger:logger, const LogLevel:discordAppend, const channelName[])
 {
+    if(!IsValidLogger(logger)) {
+        return;
+    }
+
+    
     s_LoggerDiscord[logger][E_LOGGER_DISCORD_APPEND] = discordAppend;
 
     if(discordAppend != LOG_OFF) {
