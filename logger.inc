@@ -76,7 +76,7 @@ forward SetAllLoggerLevel(LogLevel:level);
 forward CloseLoggers();
 
 // obtener el nombre de un logger
-forward GetLoggerName(Logger:logger, output[], const size = sizeof(output));
+forward bool:GetLoggerName(Logger:logger, output[], const size = sizeof(output));
 
 // obtener el maximo de loggers en tiempo de ejecucion
 forward GetMaxLoggers();
@@ -113,6 +113,8 @@ forward Logger:GetLogger(const handlerName[], LogLevel:fileAppend = LOG_OFF, Log
 
 
 
+// devuelve true si un log de ese nivel se va a escribir en ese logger
+forward bool:IsLoggerLevelEnabled(Logger:logger, LogLevel:level);
 
 
 // sendlog es la funcion utilizada para enviar logs a un handler, con un nivel, mensaje y fields
@@ -212,6 +214,11 @@ Logger:GetLogger(const handlerName[], LogLevel:fileAppend = LOG_OFF, LogLevel:co
 
 static stock OpenLoggerFile(Logger:logger)
 {
+    if(!IsValidLogger(logger)) {
+        return;
+    }
+
+
     new handlerName[MAX_LOGGER_NAME_LENGTH];
     GetLoggerName(logger, handlerName);
 
@@ -227,6 +234,10 @@ static stock OpenLoggerFile(Logger:logger)
 
 static stock CloseLoggerFile(Logger:logger)
 {
+    if(!IsValidLogger(logger)) {
+        return;
+    }
+
     fclose(s_LoggerData[logger][E_LOGGER_FILE]);
     s_LoggerData[logger][E_LOGGER_FILE] = File:-1;
 }
@@ -241,7 +252,7 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
         return;
     }
 
-    if(logger == INVALID_LOGGER_ID || level < s_LoggerData[logger][E_LOGGER_LEVEL]) {
+    if(!IsValidLogger(logger) || level < s_LoggerData[logger][E_LOGGER_LEVEL]) {
         return;
     }
 
@@ -303,6 +314,22 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
     s_ActiveLogger = INVALID_LOGGER_ID;
 }
+
+// igual que sendlog, pero si el nivel esta apagado no evalua los campos (logger_int, logger_string...).
+// usar solo como instruccion; el "{} else" evita que un else externo quede pegado al if de la macro
+#define sendlogEx(%0,%1,%2) if(!IsLoggerLevelEnabled(%0,%1)) {} else sendlog(%0,%1,%2)
+
+
+stock bool:IsLoggerLevelEnabled(Logger:logger, LogLevel:level)
+{
+    if(!s_LoggerInit || !IsValidLogger(logger)) {
+        return false;
+    }
+
+    return (level >= s_LoggerData[logger][E_LOGGER_LEVEL]);
+}
+
+
 
 
 
@@ -385,6 +412,10 @@ stock GetLogLevelName(LogLevel:level, output[], const size = sizeof(output))
 
 stock SetLoggerLevel(Logger:logger, LogLevel:level)
 {
+    if(!IsValidLogger(logger)) {
+        return;
+    }
+
     s_LoggerData[logger][E_LOGGER_LEVEL] = level;
 }
 
@@ -392,6 +423,10 @@ stock SetLoggerLevel(Logger:logger, LogLevel:level)
 
 stock LogLevel:GetLoggerLevel(Logger:logger)
 {
+    if(!IsValidLogger(logger)) {
+        return LOG_OFF;
+    }
+
     return s_LoggerData[logger][E_LOGGER_LEVEL];
 }
 
@@ -399,12 +434,20 @@ stock LogLevel:GetLoggerLevel(Logger:logger)
 
 stock SetLoggerConsoleAppend(Logger:logger, LogLevel:consoleAppend)
 {
+    if(!IsValidLogger(logger)) {
+        return;
+    }
+    
     s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE] = consoleAppend;
 }
 
 
 stock LogLevel:GetLoggerConsoleAppend(Logger:logger)
 {
+    if(!IsValidLogger(logger)) {
+        return LOG_OFF;
+    }
+
     return s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE];
 }
 
@@ -412,6 +455,10 @@ stock LogLevel:GetLoggerConsoleAppend(Logger:logger)
 
 stock SetLoggerFileAppend(Logger:logger, LogLevel:fileAppend)
 {
+    if(!IsValidLogger(logger)) {
+        return;
+    }
+
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE] != LOG_OFF && fileAppend == LOG_OFF) {
         CloseLoggerFile(logger);
     }
@@ -425,6 +472,10 @@ stock SetLoggerFileAppend(Logger:logger, LogLevel:fileAppend)
 
 stock LogLevel:GetLoggerFileAppend(Logger:logger)
 {
+    if(!IsValidLogger(logger)) {
+        return LOG_OFF;
+    }
+
     return s_LoggerData[logger][E_LOGGER_APPEND_FILE];
 }
 
@@ -459,9 +510,15 @@ stock CloseLoggers()
 }
 
 
-stock GetLoggerName(Logger:logger, output[], const size = sizeof(output))
+stock bool:GetLoggerName(Logger:logger, output[], const size = sizeof(output))
 {
+    if(!IsValidLogger(logger)) {
+        return false;
+    }
+
     strunpack(output, s_LoggerData[logger][E_LOGGER_NAME], size);
+
+    return true;
 }
 
 
@@ -488,6 +545,10 @@ stock LogLevel:GetLogLevelId(const logLevelName[])
 
 stock bool:IsValidLogger(Logger:logger)
 {
+    if(logger == INVALID_LOGGER_ID || logger < Logger:0 || logger >= Logger:MAX_LOGGERS) {
+        return false;
+    }
+    
     return s_LoggerData[logger][E_LOGGER_VALID];
 }
 
