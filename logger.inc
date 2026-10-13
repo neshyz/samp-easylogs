@@ -104,7 +104,8 @@ forward bool:IsValidLogger(Logger:logger);
 forward LoggerField:logger_string(const name[], const value[]);
 forward LoggerField:logger_int(const name[], value);
 forward LoggerField:logger_float(const name[], Float:value);
-
+forward LoggerField:logger_array(const name[], const value[], const size = sizeof(value));
+forward LoggerField:logger_bool(const name[], const {bool, _}:value);
 
 
 // GetLogger permite generar un nuevo logger con configuración independiente
@@ -376,6 +377,30 @@ stock LoggerField:logger_string(const name[], const value[])
     return LoggerField:field;
 }
 
+stock LoggerField:logger_array(const name[], const value[], const size = sizeof(value))
+{
+    new field[MAX_LOGGER_FIELD_LENGTH];
+    ArrayStringify(value, field, size);
+
+    format(field, sizeof(field),
+        "%s = %s", name, field
+    );
+
+    return LoggerField:field;
+}
+
+
+stock LoggerField:logger_bool(const name[], const {bool, _}:value)
+{
+    new field[MAX_LOGGER_FIELD_LENGTH];
+
+    format(field, sizeof(field),
+        "%s = %s", name, value ? "true" : "false"
+    );
+
+    return LoggerField:field;
+}
+
 
 static stock GetDateString(output[], const size = sizeof(output))
 {
@@ -587,4 +612,23 @@ stock easylogs_isempty(const string[]) {
 		return string{0} == '\0';
 	else
 		return string[0] == '\0';
+}
+
+
+
+static stock ArrayStringify(const arr[], output[], const arrsize = sizeof(arr), const outputsize = sizeof(output))
+{
+    for(new idx; idx < arrsize; idx++) {
+
+        if(idx == arrsize - 1) {
+
+            format(output, outputsize, "%s%d", output, arr[idx]);
+
+        }
+        else {
+            format(output, outputsize, "%s%d, ", output, arr[idx]);
+        }
+    }
+    format(output, outputsize, "[%s]", output);
+    return 1;
 }
