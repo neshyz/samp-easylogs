@@ -56,15 +56,33 @@
 #endif
 
 
+// obtener la conexion MySQL de un logger, retorna MYSQL_INVALID_HANDLE si el logger es invalido
 forward MySQL:GetLoggerDatabase(Logger:logger);
 
+// activar el guardado en MySQL de un logger desde el LogLevel dbAppend (LOG_OFF lo desactiva), crea la tabla si no existe y reinicia sus columnas registradas
+// baseSchema agrega las columnas log_level y msg a cada fila
 forward SetLoggerDatabaseAppend(Logger:logger, LogLevel:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", bool:baseSchema = true);
+
+// obtener el LogLevel minimo que se inserta en la base, retorna LOG_OFF si el logger es invalido
 forward LogLevel:GetLoggerDatabaseAppend(Logger:logger);
-forward GetLoggerDatabaseTable(Logger:logger, output[], const size = sizeof(output));
+
+// obtener el nombre de la tabla de un logger, retorna false si el logger es invalido
+forward bool:GetLoggerDatabaseTable(Logger:logger, output[], const size = sizeof(output));
+
+// cambiar la tabla donde se insertan los logs, no crea la tabla ni sus columnas
 forward SetLoggerDatabaseTable(Logger:logger, const table[]);
+
+// obtener si el logger completa las columnas log_level y msg en cada fila
 forward bool:GetLoggerDatabaseBaseSchema(Logger:logger);
+
+// activar o desactivar las columnas log_level y msg, no crea las columnas
 forward SetLoggerDatabaseBaseSchema(Logger:logger, bool:value);
-forward CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[]);
+
+// registrar una columna en el logger y crearla en la tabla si no existe, solo los fields con columna registrada se guardan en la base
+// retorna false si el logger es invalido o no tiene tabla o conexion configurada
+forward bool:CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[]);
+
+forward bool:IsLoggerFieldCreated(Logger:logger, const field[]);
 
 static enum E_LOGGER_MYSQL_DATA {
     MySQL:E_LOGGER_DB,
@@ -211,8 +229,12 @@ _OnLoggerInit_Mysql(Logger:logger)
 }
 
 
-static IsLoggerFieldCreated(Logger:logger, const field[])
+static bool:IsLoggerFieldCreated(Logger:logger, const field[])
 {
+    if(!IsValidLogger(logger)) {
+        return false;
+    }
+
     new tempstr[MAX_LOGGER_DB_COLUMN_LEN];
 
     for(new idx; idx < s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT]; idx++) {
@@ -220,15 +242,19 @@ static IsLoggerFieldCreated(Logger:logger, const field[])
         strunpack(tempstr, s_LoggerColumns[logger][idx]);
 
         if(strcmp(field, tempstr, true) == 0) {
-            return 1;
+            return true;
         }
     }
 
-    return 0;
+    return false;
 }
 
 stock SetLoggerDatabaseAppend(Logger:logger, LogLevel:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", bool:baseSchema = true)
 {
+    if(!IsValidLogger(logger)) {
+        return;
+    }
+
     s_LoggerMysql[logger][E_LOGGER_DB_APPEND] = dbAppend;
     s_LoggerMysql[logger][E_LOGGER_DB] = handle;
     s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT] = 0;
@@ -256,6 +282,10 @@ stock SetLoggerDatabaseAppend(Logger:logger, LogLevel:dbAppend, MySQL:handle = M
 
 stock bool:GetLoggerDatabaseBaseSchema(Logger:logger)
 {
+    if(!IsValidLogger(logger)) {
+        return false;
+    }
+
     return s_LoggerMysql[logger][E_LOGGER_DB_BASE_SCHEMA];
 }
 
@@ -263,40 +293,78 @@ stock bool:GetLoggerDatabaseBaseSchema(Logger:logger)
 
 stock SetLoggerDatabaseBaseSchema(Logger:logger, bool:value)
 {
+    if(!IsValidLogger(logger)) {
+        return;
+    }
+
     s_LoggerMysql[logger][E_LOGGER_DB_BASE_SCHEMA] = value;
 }
 
 
 stock LogLevel:GetLoggerDatabaseAppend(Logger:logger)
 {
+    if(!IsValidLogger(logger)) {
+        return LOG_OFF;
+    }
+
     return s_LoggerMysql[logger][E_LOGGER_DB_APPEND];
 }
 
 stock MySQL:GetLoggerDatabase(Logger:logger)
 {
+    if(!IsValidLogger(logger)) {
+        return MYSQL_INVALID_HANDLE;
+    }
+
     return s_LoggerMysql[logger][E_LOGGER_DB];
 }
 
 
-stock GetLoggerDatabaseTable(Logger:logger, output[], const size = sizeof(output))
+stock bool:GetLoggerDatabaseTable(Logger:logger, output[], const size = sizeof(output))
 {
+    if(!IsValidLogger(logger)) {
+        return false;
+    }
+
     strunpack(output, s_LoggerMysql[logger][E_LOGGER_DB_TABLE], size);
+
+    return true;
 }
 
 stock SetLoggerDatabaseTable(Logger:logger, const table[])
 {
+    if(!IsValidLogger(logger)) {
+        return;
+    }
+
     strpack(s_LoggerMysql[logger][E_LOGGER_DB_TABLE], table);
 }
 
-stock CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[])
+stock bool:CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeData[])
 {
-    new idx = s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT]++;
+    if(!IsValidLogger(logger)) {
+        return false;
+    }
+
+    new idx = s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT];
     strpack(s_LoggerColumns[logger][idx], column);
 
 	new tableName[32];
-	GetLoggerDatabaseTable(logger, tableName);
+	if(!GetLoggerDatabaseTable(logger, tableName)) {
+        return false;
+    }
+
+    new MySQL:handle = GetLoggerDatabase(logger);
+    if(handle == MYSQL_INVALID_HANDLE) {
+        return false;
+    }
+
 
 	mysql_addcolumn(GetLoggerDatabase(logger), tableName, column, typeData);
+
+    s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT]++;
+
+    return true;
 }
 
 
