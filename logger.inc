@@ -120,6 +120,12 @@ forward bool:IsLoggerLevelEnabled(Logger:logger, LogLevel:level);
 // sendlog es la funcion utilizada para enviar logs a un handler, con un nivel, mensaje y fields
 forward sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...);
 
+// lazylog es igual que sendlog, pero los fields solo se evaluan si el nivel esta habilitado (es un macro, ver su #define)
+
+/*
+    native lazylog(Logger:logger, LogLevel:level, const message[], LoggerField:...);
+*/
+
 
 #if defined LOGGER_USE_CALLBACKS
     forward OnLoggerInit(Logger:logger);
@@ -325,7 +331,8 @@ sendlog(Logger:logger, LogLevel:level, const message[], LoggerField:...)
 
 // igual que sendlog, pero si el nivel esta apagado no evalua los campos (logger_int, logger_string...).
 // usar solo como instruccion; el "{} else" evita que un else externo quede pegado al if de la macro
-#define sendlogEx(%0,%1,%2) if(!IsLoggerLevelEnabled(%0,%1)) {} else sendlog(%0,%1,%2)
+#define lazylog(%0,%1,%2) if(!IsLoggerLevelEnabled(%0,%1)) {} else sendlog(%0,%1,%2)
+
 
 
 stock bool:IsLoggerLevelEnabled(Logger:logger, LogLevel:level)
