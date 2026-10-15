@@ -249,6 +249,15 @@ static bool:IsLoggerFieldCreated(Logger:logger, const field[])
     return false;
 }
 
+// deja la configuracion de mysql de un logger apagada, sin validar el logger (usado por ezlogs_init)
+_ResetLogger_Mysql(Logger:logger)
+{
+    s_LoggerMysql[logger][E_LOGGER_DB_APPEND] = LOG_OFF;
+    s_LoggerMysql[logger][E_LOGGER_DB] = MYSQL_INVALID_HANDLE;
+    s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT] = 0;
+}
+
+
 stock SetLoggerDatabaseAppend(Logger:logger, LogLevel:dbAppend, MySQL:handle = MYSQL_INVALID_HANDLE, const table[] = "", bool:baseSchema = true)
 {
     if(!IsValidLogger(logger)) {

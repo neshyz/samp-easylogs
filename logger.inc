@@ -150,12 +150,14 @@ ezlogs_init()
     for(new Logger:logger; logger < Logger:MAX_LOGGERS; logger++) {
         s_LoggerData[logger][E_LOGGER_APPEND_CONSOLE] = LOG_OFF;
         s_LoggerData[logger][E_LOGGER_APPEND_FILE] = LOG_OFF;
+        // se usan los reset internos y no los setters: los setters validan el logger
+        // y en este punto ningun logger es valido, por lo que no harian nada
         #if defined LOGGER_USE_MYSQL
-            SetLoggerDatabaseAppend(logger, LOG_OFF);
+            _ResetLogger_Mysql(logger);
         #endif
 
         #if defined LOGGER_USE_DISCORD
-            SetLoggerDiscordAppend(logger, LOG_OFF, "");
+            _ResetLogger_Discord(logger);
         #endif
         
         s_LoggerData[logger][E_LOGGER_LEVEL] = LOG_OFF;
