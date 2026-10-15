@@ -52,6 +52,14 @@ _OnLoggerLog_Discord(const Logger:logger, const LogLevel:level, const msg[])
 
     strunpack(discordChannelName, s_LoggerDiscord[logger][E_LOGGER_CHANNEL_NAME]);
 
+    // sin canal no se envia nada: CallRemoteFunction con un string vacio crashea el servidor
+    if(easylogs_isempty(discordChannelName)) {
+        format(s_TitleBuffer, sizeof(s_TitleBuffer), "");
+        format(s_MessageBuffer, sizeof(s_MessageBuffer), "");
+        s_FieldCount = 0;
+        return;
+    }
+
     CallRemoteFunction("SendDiscordMessage", "sss", s_TitleBuffer, s_MessageBuffer, discordChannelName);
 
     format(s_TitleBuffer, sizeof(s_TitleBuffer), "");
@@ -80,6 +88,14 @@ _OnLoggerAppendField_Discord(const Logger:logger, const LogLevel:level, const ms
 }
 
 
+
+
+// deja la configuracion de discord de un logger apagada, sin validar el logger (usado por ezlogs_init)
+_ResetLogger_Discord(const Logger:logger)
+{
+    s_LoggerDiscord[logger][E_LOGGER_DISCORD_APPEND] = LOG_OFF;
+    strpack(s_LoggerDiscord[logger][E_LOGGER_CHANNEL_NAME], "");
+}
 
 
 SetLoggerDiscordAppend(const Logger:logger, const LogLevel:discordAppend, const channelName[])
