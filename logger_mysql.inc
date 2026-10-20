@@ -355,10 +355,19 @@ stock bool:CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeD
         return false;
     }
 
-    new idx = s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT];
-    strpack(s_LoggerColumns[logger][idx], column);
+    if(easylogs_isempty(column)) {
+        return false;
+    }
 
-	new tableName[32];
+    // evitar escribir fuera de s_LoggerColumns cuando se superan MAX_LOGGER_DB_COLUMNS
+    // (baseSchema ocupa 2 de esos lugares con log_level y msg)
+    new idx = s_LoggerMysql[logger][E_LOGGER_DB_COLUMN_COUNT];
+    if(idx >= MAX_LOGGER_DB_COLUMNS) {
+        printf("logger_mysql: no se pudo crear la columna \"%s\", se alcanzo el limite MAX_LOGGER_DB_COLUMNS (%d)", column, MAX_LOGGER_DB_COLUMNS);
+        return false;
+    }
+
+	new tableName[MAX_LOGGER_DB_TABLE_LEN];
 	if(!GetLoggerDatabaseTable(logger, tableName)) {
         return false;
     }
@@ -368,6 +377,8 @@ stock bool:CreateLoggerDatabaseColumn(Logger:logger, const column[], const typeD
         return false;
     }
 
+    // registrar la columna solo cuando ya se sabe que se va a crear
+    strpack(s_LoggerColumns[logger][idx], column);
 
 	mysql_addcolumn(GetLoggerDatabase(logger), tableName, column, typeData);
 
