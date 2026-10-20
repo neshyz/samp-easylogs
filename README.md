@@ -201,3 +201,88 @@ query result:
 ```sql
 INSERT INTO log_connections (log_level, msg, username, ip, version) VALUES ('warn', 'player connection', 'Neshy', '127.0.0.1', '0.3.7');
 ```
+
+
+# logger_config
+
+Es un modulo opcional que carga la configuracion de los loggers desde un archivo `.json`, para poder cambiar niveles, appenders y la exportacion a MySQL sin recompilar.
+Necesita [pawn-json](https://github.com/Southclaws/pawn-json) (`json.inc`).
+
+```pawn
+#include <a_mysql>
+#include <logger>
+#include <logger_mysql> // opcional, siempre antes de logger_config
+#include <logger_config>
+```
+
+## Uso
+
+```pawn
+public OnGameModeInit()
+{
+    ezlogs_init();
+
+    g_PlayerLogger = GetLogger("players");
+
+    // lee scriptfiles/logger.json (o la ruta que le pases, relativa a scriptfiles/)
+    // y lo aplica a todos los loggers existentes
+    LoadLoggerConfig();
+
+    // solo con logger_mysql: aplica dbAppend, tableName, baseSchema y columns con esta conexion
+    handle_db = ezmysql_connect("127.0.0.1", ....);
+    LoadLoggerDatabaseConfig(handle_db);
+}
+```
+
+- El orden entre `GetLogger`, `LoadLoggerConfig` y `LoadLoggerDatabaseConfig` no importa: los loggers creados despues de cargar el archivo reciben su configuracion al crearse.
+- Si el archivo no existe se crea con todos los loggers y sus valores por defecto (`LOGGER_DEFAULT_*`, ver [docs/config.md](docs/config.md)).
+- Las claves que falten se completan y se guardan en el archivo.
+- Si el archivo existe pero no es un json valido se usan los valores por defecto y el archivo **no** se sobrescribe.
+- Un nivel invalido (ej: `"warning"`) se avisa por consola y se usa el valor por defecto. Los niveles no distinguen mayusculas: `all`, `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `off`.
+
+## Formato del archivo
+
+Un objeto por logger, cuya clave es el nombre del logger:
+
+```json
+{
+    "players": {
+        "level": "all",
+        "consoleAppend": "error",
+        "fileAppend": "info",
+        "dbAppend": "info",
+        "tableName": "log_players",
+        "baseSchema": true,
+        "columns": [
+            { "name": "playerid", "typeData": "INTEGER DEFAULT 0" },
+            { "name": "username", "typeData": "VARCHAR(64) DEFAULT NULL" }
+        ]
+    }
+}
+```
+
+| clave | tipo | descripcion |
+| --- | --- | --- |
+| `level` | string | LogLevel global del logger |
+| `consoleAppend` | string | LogLevel del console appender |
+| `fileAppend` | string | LogLevel del file appender |
+| `dbAppend` | string | LogLevel minimo que se inserta en MySQL, `off` lo desactiva (solo logger_mysql) |
+| `tableName` | string | tabla donde se insertan los logs, por defecto el nombre del logger (solo logger_mysql) |
+| `baseSchema` | bool | agrega las columnas `log_level` y `msg` (solo logger_mysql) |
+| `columns` | array | columnas propias, cada una con `name` y `typeData` (solo logger_mysql) |
+
+## OnLoggerConfigLoaded
+
+Se llama cada vez que se aplica la configuracion a un logger: al cargar el archivo, al crear un logger despues de cargarlo y al llamar `LoadLoggerDatabaseConfig`.
+`loggerConfig` solo es valido durante el callback; lo que agregues o modifiques en el se guarda en el archivo, util para guardar tu propia configuracion junto a la del logger:
+
+```pawn
+public OnLoggerConfigLoaded(Logger:logger, Node:loggerConfig)
+{
+    new bool:alertAdmins;
+    if(JSON_GetBool(loggerConfig, "alertAdmins", alertAdmins)) {
+        JSON_SetBool(loggerConfig, "alertAdmins", false); // no existe: crear la clave con su valor por defecto
+    }
+    return 1;
+}
+```

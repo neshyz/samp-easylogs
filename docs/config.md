@@ -51,3 +51,31 @@ This is a global buffer variable, but still 4096 is probably too much and you co
 #### MAX_LOGGER_DB_BUFFER_LEN (1024)
 Maximum length for buffers.
 Currently easylogs uses 2 temporary buffers that get merged into one final buffer that completes an INSERT query (the one defined with `MAX_LOGGER_DB_QUERY_LEN`, hence its bigger size).
+# logger_config.inc
+
+`logger_config.inc` requires [pawn-json](https://github.com/Southclaws/pawn-json) (`json.inc`).
+It must be included after `logger.inc` and, when used, after `logger_mysql.inc`.
+
+#### LOGGER_DEFAULT_CONFIG_FILE_PATH ("logger.json")
+Default path used by `LoadLoggerConfig()` when no path is given.
+The path is relative to the `scriptfiles/` folder, like the rest of the SA-MP file functions.
+
+#### LOGGER_DEFAULT_LEVEL (LOG_ALL)
+Value written to `level` when a logger has no `level` key in the config file.
+
+#### LOGGER_DEFAULT_CONSOLE_APPEND (LOG_DEBUG)
+Value written to `consoleAppend` when a logger has no `consoleAppend` key in the config file.
+
+#### LOGGER_DEFAULT_FILE_APPEND (LOG_WARN)
+Value written to `fileAppend` when a logger has no `fileAppend` key in the config file.
+
+#### LOGGER_DEFAULT_DATABASE_APPEND (LOG_INFO)
+Value written to `dbAppend` when a logger has no `dbAppend` key in the config file.
+Only used with `logger_mysql.inc`. Keep in mind that with the default value every logger gets a table once `LoadLoggerDatabaseConfig` is called; set it to `LOG_OFF` to make database logging opt-in.
+
+#### LOGGER_DEFAULT_BASE_SCHEMA (true)
+Value written to `baseSchema` when a logger has no `baseSchema` key in the config file.
+Only used with `logger_mysql.inc`.
+
+#### MAX_LOGGER_CONFIG_TYPEDATA_LEN (128)
+Maximum length of a column `typeData` read from the config file, e.g. `"VARCHAR(64) DEFAULT NULL"`.
