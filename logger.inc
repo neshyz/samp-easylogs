@@ -83,8 +83,12 @@ forward GetMaxLoggers();
 
 
 
-// obtener un LogLevel ID a partir de su nombre, ejemplo: `warning` retornara LogLevel:LOG_WARN (4)
+// obtener un LogLevel ID a partir de su nombre (sin distinguir mayusculas), ejemplo: `warn` retornara LogLevel:LOG_WARN (4)
+// retorna LOG_OFF si el nombre no corresponde a ningun nivel, usar IsValidLogLevelName para distinguirlo de "off"
 forward LogLevel:GetLogLevelId(const logLevelName[]);
+
+// retorna true si el nombre corresponde a un LogLevel: all, trace, debug, info, warn, error, fatal u off
+forward bool:IsValidLogLevelName(const logLevelName[]);
 
 
 // configuracion de logger en tiempo de ejecucion
@@ -207,6 +211,14 @@ Logger:GetLogger(const handlerName[], LogLevel:fileAppend = LOG_OFF, LogLevel:co
     if(s_LoggerData[logger][E_LOGGER_APPEND_FILE] != LOG_OFF) {
         OpenLoggerFile(logger);
     }
+
+    // si logger_config.inc esta incluido, aplicar la configuracion cargada al nuevo logger
+    // antes de OnLoggerInit, para que el callback ya reciba el logger configurado.
+    // _OnLoggerInit_Config se define despues (en logger_config.inc): `defined` sobre una funcion
+    // es verdadero en la segunda pasada del compilador, que es la que genera el codigo
+    #if defined _OnLoggerInit_Config
+        _OnLoggerInit_Config(logger);
+    #endif
 
 
     #if defined LOGGER_USE_CALLBACKS
@@ -564,16 +576,32 @@ stock GetMaxLoggers()
 
 stock LogLevel:GetLogLevelId(const logLevelName[])
 {
+    // strcmp considera iguales a dos strings si uno esta vacio, por eso se descarta antes
+    if(easylogs_isempty(logLevelName)) {
+        return LOG_OFF;
+    }
+
     new tempName[16];
     for(new LogLevel:level; level < LogLevel; level++) {
         GetLogLevelName(level, tempName);
 
-        if(strcmp(logLevelName, tempName, false) == 0 && !easylogs_isempty(tempName)) {
+        if(strcmp(logLevelName, tempName, true) == 0 && !easylogs_isempty(tempName)) {
             return level;
         }
     }
 
     return LOG_OFF;
+}
+
+
+stock bool:IsValidLogLevelName(const logLevelName[])
+{
+    if(easylogs_isempty(logLevelName)) {
+        return false;
+    }
+
+    // GetLogLevelId devuelve LOG_OFF tanto para "off" como para nombres desconocidos
+    return (GetLogLevelId(logLevelName) != LOG_OFF || strcmp(logLevelName, "off", true) == 0);
 }
 
 
