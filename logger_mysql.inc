@@ -193,33 +193,51 @@ _OnLoggerAppendField_Mysql(Logger:logger, LogLevel:level, const message[], const
 
 
 static
-    s_TempFields[MAX_LOGGER_DB_BUFFER_LEN],
+    // buffer temporal donde se escapa el valor de un solo campo antes de agregarlo a s_QueryBuffer_Values
     s_TempContents[MAX_LOGGER_DB_BUFFER_LEN]
 ;
 
+// agrega una columna y su valor al INSERT que se arma para el log actual
+// los campos se concatenan al final de los buffers con strcat, sin reformatear lo ya acumulado,
+// asi el costo de cada campo depende solo de su largo y no de todo lo que lleva el log
+// el resultado es el mismo que antes: columnas `campo` separadas por ", " y valores 'escapados' con %e
+//
+// limites del buffer, igual que antes con mysql_format (R41):
+// - si el largo total es mayor que sizeof, mysql_format fallaba con "destination size is too small"
+//   sin escribir nada y se copiaba el temporal limpio, asi que el buffer queda vacio
+// - si el largo total es exactamente sizeof, se cortaba el ultimo caracter, que es lo que hace strcat
 static AppendField(Logger:logger, const field[], const content[])
 {
-    if(s_InsertedRows > 0) {
+    if(s_InsertedRows == 0) {
+        // primer campo del log: el buffer temporal se vacia una sola vez aca y no en cada campo,
+        // mysql_format termina la cadena con EOS y si falla se detecta por su retorno
+        s_TempContents[0] = EOS;
+    }
+    else {
         strcat(s_QueryBuffer_Values, ", ");
         strcat(s_QueryBuffer_Columns, ", ");
     }
-   
-    
-    mysql_format(GetLoggerDatabase(logger), s_TempFields, sizeof(s_TempFields),
-        "%s`%s`", s_QueryBuffer_Columns, field
-    );
-    
-    mysql_format(GetLoggerDatabase(logger), s_TempContents, sizeof(s_TempContents),
-        "%s'%e'", s_QueryBuffer_Values, content
-    );
 
-    format(s_QueryBuffer_Values, sizeof(s_QueryBuffer_Values), "%s", s_TempContents);
-    format(s_QueryBuffer_Columns, sizeof(s_QueryBuffer_Columns), "%s", s_TempFields);
+    // el nombre de la columna va entre backticks y sin escapar, igual que el "%s`%s`" anterior
+    if(strlen(s_QueryBuffer_Columns) + strlen(field) + 2 > sizeof(s_QueryBuffer_Columns)) {
+        s_QueryBuffer_Columns[0] = EOS;
+    }
+    else {
+        strcat(s_QueryBuffer_Columns, "`");
+        strcat(s_QueryBuffer_Columns, field);
+        strcat(s_QueryBuffer_Columns, "`");
+    }
+
+    // solo el valor se escapa: se formatea aparte en el temporal y despues se agrega al final de los valores
+    if(!mysql_format(GetLoggerDatabase(logger), s_TempContents, sizeof(s_TempContents), "'%e'", content)
+        || strlen(s_QueryBuffer_Values) + strlen(s_TempContents) > sizeof(s_QueryBuffer_Values)) {
+        s_QueryBuffer_Values[0] = EOS;
+    }
+    else {
+        strcat(s_QueryBuffer_Values, s_TempContents);
+    }
 
     s_InsertedRows++;
-
-    __strclean(s_TempFields);
-    __strclean(s_TempContents);
 }
 
 _OnLoggerInit_Mysql(Logger:logger)
